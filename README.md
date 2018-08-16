@@ -1,4 +1,4 @@
-# qrec_wgs_1
+# qrec_wgs1
 
 ## Information
 Github page for WGS article
