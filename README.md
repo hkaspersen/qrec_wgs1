@@ -1,6 +1,7 @@
 # qrec_wgs_1
 
 ## Information
+Github page for WGS article
 
 ## Base analysis
 [Preliminary analysis on isolate data](Base_data.html)
