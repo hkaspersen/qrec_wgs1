@@ -1,0 +1,166 @@
+---
+title: "Base Data Analysis"
+author: "Håkon Kaspersen"
+date: '`r format(Sys.time(), "%d.%m.%Y")`'
+output:
+    html_document:
+      code_folding: hide
+      df_print: paged
+      highlight: kate
+      number_sections: yes
+      theme: flatly
+      toc: yes
+      toc_depth: 3
+      toc_float:
+        collapsed: yes
+    pdf_document:
+      toc: yes
+      toc_depth: '3'
+---
+
+# Description
+This notebook contains the preliminary analysis of the data used in the article "Comparative analysis of resistance mechanisms in quinolone resistant E. coli originating from livestock populations and wild animals in Norway". This provides an overview of the data used in the study.
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(tidyverse)
+library(magrittr)
+library(pander)
+```
+
+# Import data and wrangle
+Importing data for analysis and change column values to correct type.
+Presents the structure of the data frame.
+```{r}
+# Input folder
+input <- "D:/R_Data/WGS_Article2"
+
+total_df <- read_excel(paste0(input,"/komplett_oversikt_isolater_art2.xlsx")) %>%
+  rename(species = NORMart,
+         CIP = T_CIP,
+         NAL = U_NAL) %>%
+  mutate(species = case_when(species == "avi" ~ "Wild bird",
+                             species == "chi" ~ "Broiler",
+                             species == "fox" ~ "Red fox",
+                             species == "pig" ~ "Pig"),
+         species = factor(species),
+         method = factor(method),
+         qubit = as.numeric(qubit),
+         `260/280` = as.numeric(`260/280`),
+         `260/230` = as.numeric(`260/230`),
+         antres = as.numeric(antres),
+         read_size = factor(as.character(read_size)),
+         group = factor(group),
+         CIP = factor(CIP,
+                      levels = c("0.03",
+                                 "0.06",
+                                 "0.12",
+                                 "0.25",
+                                 "0.5",
+                                 "1",
+                                 "2",
+                                 "4",
+                                 "8",
+                                 "16"),
+                      ordered = TRUE),
+         NAL = factor(NAL,
+                      levels = c("4",
+                                 "8",
+                                 "16",
+                                 "32",
+                                 "64",
+                                 "128",
+                                 "256"),
+                      ordered = TRUE)) %>%
+  select(-c(saksnr, plate_id))
+
+str(total_df)
+```
+
+# Create tables
+## Isolates per animal species
+```{r}
+species_n <- total_df %>%
+  group_by(species) %>%
+  count() %>%
+  rename("Animal Species" = species)
+pander(species_n)
+```
+
+## Isolates per sequencing method
+```{r}
+seq_method_n <- total_df %>%
+  group_by(group, sequencer, libprep, read_size) %>%
+  count() %>%
+  rename(Group = group,
+         Sequencer = sequencer,
+         "Library Prep" = libprep,
+         "Read Size" = read_size)
+pander(seq_method_n)
+```
+
+## Isolates per phenotype
+The CIP and NAL columns represents the MIC values for ciprofloxacin and nalidixic acid, respectively.
+The column "Additional resistances" represents the amount of other anitmicroial compounds the isolate is resistant to in addition to CIP and NAL.
+```{r}
+res_groups_n <- total_df %>%
+  group_by(CIP, NAL, antres) %>%
+  count() %>%
+  rename("Additional Resistances" = antres)
+pander(res_groups_n)
+```
+
+## Isolates per CIP MIC and animal species
+```{r}
+cip_species_n <- total_df %>%
+  group_by(species, CIP) %>%
+  count() %>%
+  rename("Animal Species" = species)
+pander(cip_species_n)
+```
+
+## Isolates per NAL MIC and animal species
+```{r}
+nal_species_n <- total_df %>%
+  group_by(species, NAL) %>%
+  count() %>%
+  rename("Animal Species" = species)
+pander(nal_species_n)
+```
+
+# Plots
+
+## DNA extraction results
+### DNA quality and purity
+```{r}
+ggplot(total_df,
+       aes(`260/280`,`260/230`, fill = species))+
+  geom_point(pch = 21,
+             size = 2) +
+  labs(x = "A260/280",
+       y = "A260/230") +
+  scale_fill_manual(values = c('#ca0020',
+                               '#f4a582',
+                               '#92c5de',
+                               '#0571b0'))+
+  theme_classic()+
+  theme(legend.title = element_blank())
+```
+
+### DNA concentration and quality
+```{r}
+ggplot(total_df,
+       aes(`260/280`,qubit, fill = species))+
+  geom_point(pch = 21,
+             size = 2)+
+  labs(x = "A260/280",
+       y = "ng/µl DNA (Qubit)")+
+  scale_fill_manual(values = c('#ca0020',
+                               '#f4a582',
+                               '#92c5de',
+                               '#0571b0'))+
+  theme_classic()+
+  theme(legend.title = element_blank())
+```
+
+
