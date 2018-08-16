@@ -1,5 +1,7 @@
 # qrec_wgs_1
 
+## Information
+
 ## Base analysis
 [Preliminary analysis on isolate data](Base_data.html)
 
@@ -23,3 +25,4 @@ MINLEN:36](/trim_testing/Fastqc_analysis_Slidingwindow4_20_minlen36.html)
 
 [Trimmomatic SLIDINGWINDOW:4:20 
 MINLEN:50](trim_testing/Fastqc_analysis_Slidingwindow4_20_minlen50.html)
+
