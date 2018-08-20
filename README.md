@@ -32,3 +32,8 @@ minlen50](/trim_testing/Fastqc_analysis_Slidingwindow4_2_minlen50.html)
 
 [Fastqc report on trimmomatic setting Slidingwindow4:20 
 minlen50](/trim_testing/Fastqc_analysis_Slidingwindow4_20_minlen50.html)
+
+## Assembly Metrics - Quast
+
+[Quast report on trim testing 
+metrics](/trim_testing/quast_notebook_trim_testing.html)
