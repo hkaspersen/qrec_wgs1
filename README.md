@@ -4,7 +4,7 @@
 Github page for WGS article
 
 ## Base analysis
-[Preliminary analysis on isolate data](Base_data.html)
+[Preliminary analysis on isolate data](/notebooks/Base_data.html)
 
 
 ## Trimmomatic testing
@@ -37,3 +37,7 @@ minlen50](/trim_testing/Fastqc_analysis_Slidingwindow4_20_minlen50.html)
 
 [Quast report on trim testing 
 metrics](/trim_testing/quast_notebook_trim_testing.html)
+
+
+## AMR gene analysis and MLST
+[AMR gene detection results](/notebooks/poster_analysis.html)
