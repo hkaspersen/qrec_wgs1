@@ -79,6 +79,12 @@ isolate_data <- read.table("../data/total_data.txt",
                            header = T,
                            stringsAsFactors = F)
 
+# Total MIC profile for all isolates in this study
+mic_data <- read.table("../data/total_MIC.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
 # ARIBA MLST results for each isolate
 mlst_results <- read.table("../data/mlst/mlst_results.txt",
                            sep = "\t",
@@ -192,7 +198,7 @@ resfinder_results %>%
   facet_wrap(~species.y)
 ```
 
-# Mutations in intrinsic genes per animal species
+## Mutations in intrinsic genes per animal species
 ```{r}
 mut_names <- names(megares_results)
 
@@ -233,6 +239,39 @@ megares_results %>%
         axis.title.x = element_blank())+
   facet_wrap(~species.y)
 ```
+
+
+## MIC plots
+```{r}
+test <- megares_results %>%
+  left_join(isolate_data, by = "saksnr") %>%
+  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
+  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
+         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
+         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
+         NAL.y = if_else(is.na(NAL.y) == TRUE, NAL.x, NAL.y),
+         CIP.y = if_else(is.na(CIP.y) == TRUE, CIP.x, CIP.y),
+         id = paste(saksnr.y, method.y, sep = "-"),
+         dupl = duplicated(id)) %>%
+  filter(dupl == FALSE) %>%
+  gather(key, value, mut_names) %>%
+  group_by(key, value, CIP.y) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(compl = complete.cases(.),
+         value = if_else(value == 1, "Mutant", "Wild Type")) %>%
+  filter(compl == TRUE) %>%
+  spread(value, n, fill = 0)
+```
+
+
+
+
+
+
+
+
+
 
 
 
