@@ -1,0 +1,238 @@
+---
+title: "Poster Data Analysis"
+author: "Håkon Kaspersen"
+date: '`r format(Sys.time(), "%d.%m.%Y")`'
+output:
+    html_document:
+      code_folding: hide
+      df_print: paged
+      highlight: kate
+      number_sections: yes
+      theme: flatly
+      toc: yes
+      toc_depth: 3
+      toc_float:
+        collapsed: yes
+    pdf_document:
+      toc: yes
+      toc_depth: '3'
+---
+
+# Description
+This notebook presents the analysis of whole genome data for the poster "", presented at the ASM NGS Conference in Washington D.C. September 2018.
+
+```{r, include = FALSE}
+# Libraries
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(dplyr, ggplot2, tidyr)
+
+# Functions
+
+func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
+
+## COnfidence intervals
+get_binCI <- function(x, n) as.numeric(setNames(binom.test(x,n)$conf.int*100,
+                                                c("lwr", "upr")))
+
+# Function that returns a filtered dataframe based on the string "genes"
+filter_mut_table <- function(df) {
+  report_genes <- unique(df$gene)
+  grep_genes <- c()
+  for (gene in genes) {
+    for (g in report_genes) {
+      if (grepl(gene, g, ignore.case = T) == TRUE) {
+        grep_genes <- c(grep_genes, g)
+      }
+    }
+  }
+  df <- df %>%
+    filter(gene %in% grep_genes)
+  return(df)
+}
+
+# Function that returns a filtered dataframe based on the string "acquired_genes"
+filter_acquired_table <- function(df) {
+  report_genes <- unique(df$gene)
+  grep_genes <- c()
+  for (gene in acquired_genes) {
+    for (g in report_genes) {
+      if (grepl(gene, g, ignore.case = T) == TRUE) {
+        grep_genes <- c(grep_genes, g)
+      }
+    }
+  }
+  df <- df %>%
+    filter(gene %in% grep_genes) %>%
+    mutate(gene = gsub("_", "", gene))
+  return(df)
+}
+
+```
+
+# Import data
+This chunk imports data from MLST and ARIBA AMR gene detection results. Isolate data is also imported.
+```{r}
+# Isolate data, including DNA extraction results, species,
+# method of isolation, and sequencing methodology
+isolate_data <- read.table("../data/total_data.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+# ARIBA MLST results for each isolate
+mlst_results <- read.table("../data/mlst/mlst_results.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+# ARIBA AMR gene results (megares database, for mutations in intrinsic genes)
+megares_results <- read.table("../data/megares_results.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+# ARIBA AMR gene results (resfinder database, for acquired genes)
+resfinder_results <- read.table("../data/resfinder_results.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+```
+
+# Figures
+## Percent presence of acquired genes in total
+```{r}
+resfinder_results %>%
+  gather(gene, result, -c(saksnr, type)) %>%
+  group_by(gene, result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(result = if_else(result == 1, "Present", "Absent")) %>%
+  spread(result, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total*100, 1),
+         lwr = round(get_binCI(Present, Total)[1], 1),
+         upr = round(get_binCI(Present, Total)[2], 1)) %>%
+  ggplot(aes(gene, Percent))+
+  geom_col(color = "black")+
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                width = 0.6)+
+  labs(y = "Percent (%) of isolates")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
+        axis.title.x = element_blank())
+```
+
+## Percent presence of mutations in intrinsic genes in total
+```{r}
+megares_results %>%
+  gather(gene, result, -c(saksnr, type)) %>%
+  group_by(gene, result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(compl = complete.cases(.),
+         result = if_else(result == 1, "Present", "Absent")) %>%
+  filter(compl == TRUE) %>%
+  select(-compl) %>%
+  spread(result, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total*100, 1),
+         lwr = round(get_binCI(Present, Total)[1], 1),
+         upr = round(get_binCI(Present, Total)[2], 1)) %>%
+  ggplot(aes(gene, Percent))+
+  geom_col(color = "black")+
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                width = 0.6)+
+  labs(y = "Percent (%) of isolates")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
+        axis.title.x = element_blank())
+```
+
+## Acquired genes per animal species
+```{r}
+
+gene_names <- names(resfinder_results)
+
+gene_names <- gene_names[-c(1,2)]
+
+resfinder_results %>%
+  left_join(isolate_data, by = "saksnr") %>%
+  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
+  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
+         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
+         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
+         id = paste(saksnr.y, method.y, sep = "-"),
+         dupl = duplicated(id)) %>%
+  filter(dupl == FALSE) %>%
+  gather(key, value, gene_names) %>%
+  group_by(key, value, species.y) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(value = if_else(value == 1, "Present", "Absent")) %>%
+  spread(value, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total*100, 1),
+         lwr = round(get_binCI(Present, Total)[1], 1),
+         upr = round(get_binCI(Present, Total)[2], 1)) %>%
+  ggplot(aes(key, Percent, fill = species.y))+
+  geom_col(color = "black",
+           position = position_dodge(1))+
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                width = 0.6,
+                position = position_dodge(1))+
+  labs(y = "Percent (%) of isolates")+
+  guides(fill = FALSE)+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
+        axis.title.x = element_blank())+
+  facet_wrap(~species.y)
+```
+
+# Mutations in intrinsic genes per animal species
+```{r}
+mut_names <- names(megares_results)
+
+mut_names <- mut_names[-c(1,2)]
+
+megares_results %>%
+  left_join(isolate_data, by = "saksnr") %>%
+  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
+  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
+         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
+         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
+         id = paste(saksnr.y, method.y, sep = "-"),
+         dupl = duplicated(id)) %>%
+  filter(dupl == FALSE) %>%
+  gather(key, value, mut_names) %>%
+  group_by(key, value, species.y) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(compl = complete.cases(.),
+         value = if_else(value == 1, "Mutant", "Wild Type")) %>%
+  filter(compl == TRUE) %>%
+  spread(value, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Mutant + `Wild Type`,
+         Percent = round(Mutant/Total*100, 1),
+         lwr = round(get_binCI(Mutant, Total)[1], 1),
+         upr = round(get_binCI(Mutant, Total)[2], 1)) %>%
+  ggplot(aes(key, Percent, fill = species.y))+
+  geom_col(color = "black",
+           position = position_dodge(1))+
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                width = 0.6,
+                position = position_dodge(1))+
+  labs(y = "Percent (%) of isolates")+
+  guides(fill = FALSE)+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
+        axis.title.x = element_blank())+
+  facet_wrap(~species.y)
+```
+
+
+
