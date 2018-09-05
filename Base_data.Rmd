@@ -32,10 +32,7 @@ library(pander)
 Importing data for analysis and change column values to correct type.
 Presents the structure of the data frame.
 ```{r}
-# Input folder
-input <- "D:/R_Data/WGS_Article2"
-
-total_df <- read_excel(paste0(input,"/komplett_oversikt_isolater_art2.xlsx")) %>%
+total_df <- read_excel("data/komplett_oversikt_isolater_art2.xlsx") %>%
   rename(species = NORMart,
          CIP = T_CIP,
          NAL = U_NAL) %>%
