@@ -28,15 +28,30 @@ mut_filtered <- filter_mut_table(mut_table)
 acquired_table <- create_acquired_table(clean_acquired_data)
 acquired_filtered <- filter_acquired_table(acquired_table)
 
+filtered_mut_names <- unique(mut_filtered$gene)
+filtered_acquired_names <- unique(acquired_filtered$gene)
+
 mut_complete <- mut_filtered %>%
   spread(gene, result) %>%
-  mutate(ref = gsub("(.*?)\\_.*", "\\1", ref)) %>%
-  rename("saksnr" = ref)
+  rename("plate_id" = ref) %>%
+  mutate(plate_id = gsub("(.*?)\\_.+", "\\1", plate_id),
+         plate_id = sub("^\\d*-?(\\d{4}-.*)", "\\1", plate_id),
+         plate_id = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", plate_id)) %>%
+  left_join(isolate_data2) %>%
+  mutate(dupl = duplicated(id)) %>%
+  filter(dupl == FALSE) %>%
+  select_at(.vars = vars(id, type, filtered_mut_names))
 
 acquired_complete <- acquired_filtered %>%
   spread(gene, result) %>%
-  mutate(ref = gsub("(.*?)\\_.*", "\\1", ref)) %>%
-  rename("saksnr" = ref)
+  rename("plate_id" = ref) %>%
+  mutate(plate_id = gsub("(.*?)\\_.+", "\\1", plate_id),
+         plate_id = sub("^\\d*-?(\\d{4}-.*)", "\\1", plate_id),
+         plate_id = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", plate_id)) %>%
+  left_join(isolate_data2) %>%
+  mutate(dupl = duplicated(id)) %>%
+  filter(dupl == FALSE) %>%
+  select_at(.vars = vars(id, type, filtered_acquired_names))
 
 write.table(mut_complete, "data/megares_results.txt", sep = "\t", row.names = F)
 write.table(acquired_complete, "data/resfinder_results.txt", sep = "\t", row.names = F)
