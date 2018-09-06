@@ -19,7 +19,8 @@ output:
 ---
 
 # Description
-This notebook presents the analysis of whole genome data for the poster "", presented at the ASM NGS Conference in Washington D.C. September 2018.
+This notebook presents the analysis of whole genome data for the poster "Quinolone resistance mechanisms found in E. coli from four animal species in Norway
+", presented at the ASM NGS Conference in Washington D.C. September 2018.
 
 ```{r, include = FALSE}
 # Libraries
