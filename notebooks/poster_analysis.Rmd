@@ -75,19 +75,19 @@ This chunk imports data from MLST and ARIBA AMR gene detection results. Isolate 
 ```{r}
 # Isolate data, including DNA extraction results, species,
 # method of isolation, and sequencing methodology
-isolate_data <- read.table("../data/total_data.txt",
+isolate_data <- read.table("../data/isolate_data.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F)
 
 # Total MIC profile for all isolates in this study
-mic_data <- read.table("../data/total_MIC.txt",
+mic_data <- read.table("../data/mic_data.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F)
 
 # ARIBA MLST results for each isolate
-mlst_results <- read.table("../data/mlst/mlst_results.txt",
+mlst_results <- read.table("../data/mlst_results.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F)
@@ -104,13 +104,21 @@ resfinder_results <- read.table("../data/resfinder_results.txt",
                            header = T,
                            stringsAsFactors = F)
 
+total_data <- isolate_data %>%
+  left_join(mic_data) %>%
+  left_join(mlst_results) %>%
+  rename("m_gyrB" = gyrB) %>%
+  left_join(resfinder_results) %>%
+  select(-type) %>%
+  left_join(megares_results) %>%
+  select(-type)
 ```
 
 # Figures
 ## Percent presence of acquired genes in total
 ```{r}
 resfinder_results %>%
-  gather(gene, result, -c(saksnr, type)) %>%
+  gather(gene, result, -c(id, type)) %>%
   group_by(gene, result) %>%
   count() %>%
   ungroup() %>%
@@ -134,7 +142,7 @@ resfinder_results %>%
 ## Percent presence of mutations in intrinsic genes in total
 ```{r}
 megares_results %>%
-  gather(gene, result, -c(saksnr, type)) %>%
+  gather(gene, result, -c(id, type)) %>%
   group_by(gene, result) %>%
   count() %>%
   ungroup() %>%
@@ -160,22 +168,14 @@ megares_results %>%
 
 ## Acquired genes per animal species
 ```{r}
-
 gene_names <- names(resfinder_results)
 
 gene_names <- gene_names[-c(1,2)]
 
 resfinder_results %>%
-  left_join(isolate_data, by = "saksnr") %>%
-  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
-  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
-         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
-         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
-         id = paste(saksnr.y, method.y, sep = "-"),
-         dupl = duplicated(id)) %>%
-  filter(dupl == FALSE) %>%
+  left_join(isolate_data, by = "id") %>%
   gather(key, value, gene_names) %>%
-  group_by(key, value, species.y) %>%
+  group_by(key, value, species) %>%
   count() %>%
   ungroup() %>%
   mutate(value = if_else(value == 1, "Present", "Absent")) %>%
@@ -185,7 +185,7 @@ resfinder_results %>%
          Percent = round(Present/Total*100, 1),
          lwr = round(get_binCI(Present, Total)[1], 1),
          upr = round(get_binCI(Present, Total)[2], 1)) %>%
-  ggplot(aes(key, Percent, fill = species.y))+
+  ggplot(aes(key, Percent, fill = species))+
   geom_col(color = "black",
            position = position_dodge(1))+
   geom_errorbar(aes(ymin = lwr, ymax = upr),
@@ -196,7 +196,7 @@ resfinder_results %>%
   theme_classic()+
   theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
         axis.title.x = element_blank())+
-  facet_wrap(~species.y)
+  facet_wrap(~species)
 ```
 
 ## Mutations in intrinsic genes per animal species
@@ -206,20 +206,13 @@ mut_names <- names(megares_results)
 mut_names <- mut_names[-c(1,2)]
 
 megares_results %>%
-  left_join(isolate_data, by = "saksnr") %>%
-  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
-  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
-         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
-         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
-         id = paste(saksnr.y, method.y, sep = "-"),
-         dupl = duplicated(id)) %>%
-  filter(dupl == FALSE) %>%
+  left_join(isolate_data, by = "id") %>%
   gather(key, value, mut_names) %>%
-  group_by(key, value, species.y) %>%
+  group_by(key, value, species) %>%
   count() %>%
   ungroup() %>%
-  mutate(compl = complete.cases(.),
-         value = if_else(value == 1, "Mutant", "Wild Type")) %>%
+  mutate(value = if_else(value == 1, "Mutant", "Wild Type"),
+         compl = complete.cases(.)) %>%
   filter(compl == TRUE) %>%
   spread(value, n, fill = 0) %>%
   rowwise() %>%
@@ -227,7 +220,7 @@ megares_results %>%
          Percent = round(Mutant/Total*100, 1),
          lwr = round(get_binCI(Mutant, Total)[1], 1),
          upr = round(get_binCI(Mutant, Total)[2], 1)) %>%
-  ggplot(aes(key, Percent, fill = species.y))+
+  ggplot(aes(key, Percent, fill = species))+
   geom_col(color = "black",
            position = position_dodge(1))+
   geom_errorbar(aes(ymin = lwr, ymax = upr),
@@ -238,31 +231,12 @@ megares_results %>%
   theme_classic()+
   theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
         axis.title.x = element_blank())+
-  facet_wrap(~species.y)
+  facet_wrap(~species)
 ```
-
 
 ## MIC plots
 ```{r}
-test <- megares_results %>%
-  left_join(isolate_data, by = "saksnr") %>%
-  left_join(isolate_data, by = c("saksnr" = "plate_id")) %>%
-  mutate(species.y = if_else(is.na(species.y) == TRUE, species.x, species.y),
-         saksnr.y = if_else(is.na(saksnr.y) == TRUE, saksnr, saksnr.y),
-         method.y = if_else(is.na(method.y) == TRUE, method.x, method.y),
-         NAL.y = if_else(is.na(NAL.y) == TRUE, NAL.x, NAL.y),
-         CIP.y = if_else(is.na(CIP.y) == TRUE, CIP.x, CIP.y),
-         id = paste(saksnr.y, method.y, sep = "-"),
-         dupl = duplicated(id)) %>%
-  filter(dupl == FALSE) %>%
-  gather(key, value, mut_names) %>%
-  group_by(key, value, CIP.y) %>%
-  count() %>%
-  ungroup() %>%
-  mutate(compl = complete.cases(.),
-         value = if_else(value == 1, "Mutant", "Wild Type")) %>%
-  filter(compl == TRUE) %>%
-  spread(value, n, fill = 0)
+
 ```
 
 
