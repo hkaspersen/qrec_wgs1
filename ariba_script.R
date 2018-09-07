@@ -21,6 +21,10 @@ acquired_data <- get_ariba_data(resfinder_results)
 clean_mut_data <- fix_gene_names(mut_data)
 clean_acquired_data <- fix_gene_names(acquired_data)
 
+# Check flags
+mut_flags <- check_flags(clean_mut_data)
+acquired_flags <- check_flags(clean_acquired_data)
+
 # Wrangle
 mut_table <- create_mut_table(clean_mut_data)
 mut_filtered <- filter_mut_table(mut_table)
