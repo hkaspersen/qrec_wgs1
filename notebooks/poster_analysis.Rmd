@@ -25,7 +25,7 @@ This notebook presents the analysis of whole genome data for the poster "Quinolo
 ```{r, include = FALSE}
 # Libraries
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(dplyr, ggplot2, tidyr)
+pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats)
 
 # Functions
 
@@ -34,40 +34,6 @@ func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
 ## COnfidence intervals
 get_binCI <- function(x, n) as.numeric(setNames(binom.test(x,n)$conf.int*100,
                                                 c("lwr", "upr")))
-
-# Function that returns a filtered dataframe based on the string "genes"
-filter_mut_table <- function(df) {
-  report_genes <- unique(df$gene)
-  grep_genes <- c()
-  for (gene in genes) {
-    for (g in report_genes) {
-      if (grepl(gene, g, ignore.case = T) == TRUE) {
-        grep_genes <- c(grep_genes, g)
-      }
-    }
-  }
-  df <- df %>%
-    filter(gene %in% grep_genes)
-  return(df)
-}
-
-# Function that returns a filtered dataframe based on the string "acquired_genes"
-filter_acquired_table <- function(df) {
-  report_genes <- unique(df$gene)
-  grep_genes <- c()
-  for (gene in acquired_genes) {
-    for (g in report_genes) {
-      if (grepl(gene, g, ignore.case = T) == TRUE) {
-        grep_genes <- c(grep_genes, g)
-      }
-    }
-  }
-  df <- df %>%
-    filter(gene %in% grep_genes) %>%
-    mutate(gene = gsub("_", "", gene))
-  return(df)
-}
-
 ```
 
 # Import data
@@ -105,12 +71,12 @@ resfinder_results <- read.table("../data/resfinder_results.txt",
                            stringsAsFactors = F)
 
 total_data <- isolate_data %>%
-  left_join(mic_data) %>%
-  left_join(mlst_results) %>%
+  left_join(mic_data, by = "id") %>%
+  left_join(mlst_results, by = "id") %>%
   rename("m_gyrB" = gyrB) %>%
-  left_join(resfinder_results) %>%
+  left_join(resfinder_results, by = "id") %>%
   select(-type) %>%
-  left_join(megares_results) %>%
+  left_join(megares_results, by = "id") %>%
   select(-type)
 ```
 
@@ -191,6 +157,7 @@ resfinder_results %>%
   geom_errorbar(aes(ymin = lwr, ymax = upr),
                 width = 0.6,
                 position = position_dodge(1))+
+  scale_fill_brewer(palette = "Paired")+
   labs(y = "Percent (%) of isolates")+
   guides(fill = FALSE)+
   theme_classic()+
@@ -226,6 +193,7 @@ megares_results %>%
   geom_errorbar(aes(ymin = lwr, ymax = upr),
                 width = 0.6,
                 position = position_dodge(1))+
+  scale_fill_brewer(palette = "Paired")+
   labs(y = "Percent (%) of isolates")+
   guides(fill = FALSE)+
   theme_classic()+
@@ -234,13 +202,135 @@ megares_results %>%
   facet_wrap(~species)
 ```
 
-## MIC plots
-```{r}
+## MIC plot
 
+```{r message=FALSE, warning=FALSE}
+selected_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
+selected_mut <- c("gyrA","gyrB","parC","parE","marR")
+
+micplot_data <- mic_data %>%
+  select(id, CIP) %>%
+  left_join(megares_results, by = "id") %>%
+  left_join(resfinder_results, by = "id") %>%
+  select(-c(acrB, type.x, type.y)) %>%
+  mutate(compl = complete.cases(.)) %>%
+  filter(compl == TRUE) %>%
+  select_at(vars(id, CIP,selected_mut, selected_genes)) %>%
+  mutate(none = if_else(rowSums(.[,3:ncol(.)]) != 0, 0, 1)) %>%
+  group_by_at(vars(selected_mut, selected_genes, none)) %>%
+  { mutate(ungroup(.), group = group_indices(.)) } %>%
+  gather(gene, value, -c(id, CIP, group)) %>%
+  mutate(gene = ifelse(value == 0 & gene != "none", NA, gene),
+         value = ifelse(gene == "none" & value == 0, NA, value)) %>%
+  na.omit()
+
+
+factor_breaks <- c(0.015, 0.03, 0.06, 0.12, 0.25, 0.5, 1, 2, 4, 8, 16)
+  
+factor_levels <- c("0.015", "0.03", "0.06", "0.12", "0.25", "0.5", "1", "2", "4", 
+                   "8", "16")
+
+
+p0 <- micplot_data %>%
+  group_by(id, group) %>%
+  count() %>%
+  group_by(group) %>%
+  count() %>%
+  ggplot(aes(factor(group), nn, fill = factor(group)))+
+  geom_col(color = "black")+
+  guides(fill = FALSE)+
+  scale_fill_viridis(discrete = TRUE,
+                     direction = -1)+
+  theme_light()+
+  theme(axis.title = element_blank(),
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+p1 <- micplot_data %>%
+  group_by(CIP, group, gene) %>%
+  count() %>%
+  ggplot(aes(factor(group), CIP, fill = factor(group), size = n))+
+  geom_point(pch = 21)+
+  scale_y_continuous(trans = "log10",
+                     labels = factor_levels,
+                     breaks = factor_breaks)+
+  guides(fill = FALSE,
+         size = FALSE)+
+  scale_fill_viridis(discrete = TRUE,
+                     direction = -1)+
+  theme_light()+
+  theme(axis.title = element_blank(),
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+p2 <- ggplot(micplot_data,
+       aes(factor(group),
+           factor(gene),
+           fill = factor(group)))+
+  geom_point(shape = 23,
+             pch = 21,
+             size = 2)+
+  geom_hline(yintercept = 5.5)+
+  guides(fill = FALSE)+
+  scale_fill_viridis(discrete = TRUE,
+                     direction = -1)+
+  labs(y = "Genes")+
+  theme_light()+
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 8),
+        axis.ticks.x = element_blank(),
+        panel.grid = element_blank())
+
+plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
 ```
 
+## Heatmap plot
 
+```{r, fig.width = 10, fig.height=30}
+species_data <- select(isolate_data, c(id, species))
 
+megares_long <- megares_results %>%
+  gather(gene, value, -c(id, type)) %>%
+  filter(is.na(value) == FALSE)
+
+resfinder_long <- resfinder_results %>%
+  gather(gene, value, -c(id, type))
+
+megares_long %>%
+  rbind(resfinder_long) %>%
+  mutate(type2 = ifelse(type == "mut", 1, 2)) %>%
+  spread(id, value, fill = 0) %>%
+  gather(key = "id", value = "result", -c(gene, type, type2)) %>%
+  left_join(species_data, by = "id") %>%
+  ggplot(aes(fct_reorder(gene, type2),
+             factor(id,
+                    levels = unique(.[order(.$species,
+                                                          .$id),
+                                                    "id",
+                                                    drop = TRUE])),
+             fill = species,
+             alpha = result)) +
+  geom_tile(color = "white")+
+  geom_vline(xintercept = 14.5)+
+  scale_fill_brewer(palette = "Paired")+
+  theme_minimal()+
+  labs(fill = NULL)+
+  theme(axis.text.x = element_text(angle = 90,
+                                   hjust = 1,
+                                   vjust = 0.3,
+                                   size = 7),
+        axis.title = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(),
+        legend.position = "right")+
+  guides(alpha = FALSE)+
+  coord_fixed()
+```
 
 
 
