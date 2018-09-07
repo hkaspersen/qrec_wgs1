@@ -74,6 +74,18 @@ flag_selection <- c("19","27","147","155","403",
                     "411","915","923","787","795",
                     "531","539","659","667","787","795")  
 
+# Function that returns info on flag selection
+check_flags <- function(df) {
+  df <- df %>%
+    select(ref, gene_names, flag, ref_ctg_change) %>%
+    mutate(flag_result = flag %in% flag_selection,
+           flag_result = as.integer(flag_result),
+           ref = gsub("(.*?)\\_.+", "\\1", ref),
+           ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
+           ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref))
+  return(df)
+}
+
 # Function that handles megares data and returns a data frame with information on whether a gene
 # is mutated or not. Includes control for QRDR in gyrA.
 create_mut_table <- function(df) {
@@ -86,7 +98,7 @@ create_mut_table <- function(df) {
     summarise_all(funs(func_paste)) %>%
     mutate(ref = gsub("^(.*?)_amr_report.tsv$", "\\1", ref)) %>%
     select(-c(id, flag)) %>%
-    gather(gene, result,-ref) %>%
+    gather(gene, result, -ref) %>%
     mutate(gyrA_result = result %>% # control for mutation within QRDR for gyrA
              str_extract_all("\\d+") %>% # from reprex package
              map(as.integer) %>% # converts all to integer
