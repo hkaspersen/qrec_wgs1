@@ -70,6 +70,8 @@ resfinder_results <- read.table("../data/resfinder_results.txt",
                            header = T,
                            stringsAsFactors = F)
 
+species_data <- select(isolate_data, c(id, species))
+
 total_data <- isolate_data %>%
   left_join(mic_data, by = "id") %>%
   left_join(mlst_results, by = "id") %>%
@@ -79,6 +81,46 @@ total_data <- isolate_data %>%
   left_join(megares_results, by = "id") %>%
   select(-type)
 ```
+
+# Tables
+
+## Samples per species
+```{r}
+per_species <- isolate_data %>%
+  group_by(species) %>%
+  count()
+per_species
+```
+
+## Samples per sequencing method
+```{r}
+per_seq <- isolate_data %>%
+  group_by(sequencer, libprep, read_length) %>%
+  count()
+per_seq
+```
+
+## MLST Data
+
+### Total MLST 
+```{r}
+total_mlst <- mlst_results %>%
+  left_join(species_data, by = "id") %>%
+  group_by(ST) %>%
+  count()
+total_mlst
+```
+
+### MLST per animal species
+```{r}
+mlst_per_species <- mlst_results %>%
+  left_join(species_data, by = "id") %>%
+  group_by(ST, species) %>%
+  count()
+mlst_per_species
+```
+
+
 
 # Figures
 ## Percent presence of acquired genes in total
@@ -291,9 +333,7 @@ plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
 
 ## Heatmap plot
 
-```{r, fig.width = 10, fig.height=30}
-species_data <- select(isolate_data, c(id, species))
-
+```{r fig.height=30, fig.width=10, message=FALSE, warning=FALSE}
 megares_long <- megares_results %>%
   gather(gene, value, -c(id, type))
 
