@@ -295,29 +295,30 @@ plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
 species_data <- select(isolate_data, c(id, species))
 
 megares_long <- megares_results %>%
-  gather(gene, value, -c(id, type)) %>%
-  filter(is.na(value) == FALSE)
+  gather(gene, value, -c(id, type))
 
 resfinder_long <- resfinder_results %>%
   gather(gene, value, -c(id, type))
 
 megares_long %>%
   rbind(resfinder_long) %>%
-  mutate(type2 = ifelse(type == "mut", 1, 2)) %>%
+  mutate(type2 = ifelse(type == "mut", 1, 2),
+         value = factor(ifelse(is.na(value) == TRUE, 2, value))) %>%
   spread(id, value, fill = 0) %>%
   gather(key = "id", value = "result", -c(gene, type, type2)) %>%
   left_join(species_data, by = "id") %>%
+  mutate(result = ifelse(result == 2, NA, result),
+         fillcol = paste(species, result, sep = "_"),
+         fillcol = ifelse(is.na(result) == TRUE, NA, fillcol)) %>%
   ggplot(aes(fct_reorder(gene, type2),
              factor(id,
-                    levels = unique(.[order(.$species,
-                                                          .$id),
-                                                    "id",
-                                                    drop = TRUE])),
-             fill = species,
+                    levels = unique(.[order(.$species,.$id),"id",drop = TRUE])),
+             fill = fillcol,
              alpha = result)) +
   geom_tile(color = "white")+
   geom_vline(xintercept = 14.5)+
-  scale_fill_brewer(palette = "Paired")+
+  scale_fill_brewer(palette = "Paired",
+                    na.value = "#6b6767")+
   theme_minimal()+
   labs(fill = NULL)+
   theme(axis.text.x = element_text(angle = 90,
@@ -330,6 +331,7 @@ megares_long %>%
         legend.position = "right")+
   guides(alpha = FALSE)+
   coord_fixed()
+  
 ```
 
 
