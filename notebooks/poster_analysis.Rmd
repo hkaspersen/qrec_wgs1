@@ -509,11 +509,6 @@ acquired_genes_list <- resfinder_results %>%
   ungroup() %>%
   mutate(value = if_else(value == 1, "Present", "Absent")) %>%
   spread(value, n, fill = 0) %>%
-  rowwise() %>%
-  mutate(Total = Present + Absent,
-         Percent = round(Present/Total*100, 1),
-         lwr = round(get_binCI(Present, Total)[1], 1),
-         upr = round(get_binCI(Present, Total)[2], 1)) %>%
   select(key, species, Present, Absent) %>%
   split(f = .$key)
 

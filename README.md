@@ -39,5 +39,5 @@ minlen50](/trim_testing/Fastqc_analysis_Slidingwindow4_20_minlen50.html)
 metrics](/trim_testing/quast_notebook_trim_testing.html)
 
 
-## AMR gene analysis and MLST
-[AMR gene detection results](/notebooks/poster_analysis.html)
+## ASM 2018 Conference Poster - Data Analysis
+[ASM Poster Notebook](/notebooks/poster_analysis.html)
