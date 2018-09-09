@@ -25,7 +25,7 @@ This notebook presents the analysis of whole genome data for the poster "Quinolo
 ```{r, include = FALSE}
 # Libraries
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats)
+pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data)
 
 # Functions
 
@@ -244,8 +244,9 @@ megares_results %>%
   facet_wrap(~species)
 ```
 
-## MIC plot
+## MIC plots
 
+### MIC Distribution for generated groups
 ```{r message=FALSE, warning=FALSE}
 selected_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
 selected_mut <- c("gyrA","gyrB","parC","parE","marR")
@@ -329,6 +330,62 @@ p2 <- ggplot(micplot_data,
         panel.grid = element_blank())
 
 plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
+```
+
+### MIC correlation plots per animal species
+
+```{r}
+test <- mic_data %>%
+  select(-antres) %>%
+  left_join(species_data, by = "id") %>%
+  mutate(SMX_R = ifelse(SMX > 64, 1, 0),
+         TMP_R = ifelse(TMP > 2, 1, 0),
+         CIP_R = ifelse(CIP > 0.06, 1, 0),
+         TET_R = ifelse(TET > 8, 1, 0),
+         NAL_R = ifelse(NAL > 16, 1, 0),
+         CTX_R = ifelse(CTX > 0.25, 1, 0),
+         CHL_R = ifelse(CHL > 16, 1, 0),
+         AMP_R = ifelse(AMP > 8, 1, 0),
+         GEN_R = ifelse(GEN > 2, 1, 0)) %>%
+  select(contains("_R"), species) %>%
+  split(., f = .$species) %>%
+  lapply(., function(x) select(x, -species))
+
+create_corr_matrix <- function(df) {
+  df <- df %>%
+    as.matrix %>%
+    cor %>%
+    as.data.frame %>%
+    rownames_to_column(var = "var1") %>%
+    gather(var2, value, -var1) %>%
+    mutate(var1 = gsub("(.*?)_R$", "\\1", var1),
+           var2 = gsub("(.*?)_R$", "\\1", var2))
+  return(df)
+}
+
+corr_matrices <- lapply(test, function(x) create_corr_matrix(x)) %>%
+  bind_rows(.id = "species")
+
+cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a", "#ffd73e","#eec73a","#e29421","#f05336","#ce472e")
+
+ggplot(corr_matrices, aes(var1, var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradientn(colors=cols,
+                       na.value="grey95",
+                       limits=c(-1, 1),
+                       guide=guide_colourbar(ticks=T,nbin=10,
+                                             barheight=.5,label=T, 
+                                             barwidth=10))+
+  labs(fill = NULL)+
+  theme_classic()+
+  theme(axis.text = element_text(size = 7),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+        axis.title = element_blank(),
+        legend.position="bottom",
+        legend.justification="center",
+        legend.direction="horizontal")+
+  coord_fixed()+
+  facet_wrap(~species)
 ```
 
 ## Heatmap plot
