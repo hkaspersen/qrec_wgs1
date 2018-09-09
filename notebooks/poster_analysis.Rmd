@@ -27,6 +27,11 @@ This notebook presents the analysis of whole genome data for the poster "Quinolo
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr)
 
+```
+
+# Functions
+This chunk lists the functions used in this notebook.
+```{r}
 # Functions
 
 func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
@@ -34,6 +39,42 @@ func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
 ## COnfidence intervals
 get_binCI <- function(x, n) as.numeric(setNames(binom.test(x,n)$conf.int*100,
                                                 c("lwr", "upr")))
+
+# Creates a correlation matrix from 1/0 data from MIC values
+create_corr_matrix <- function(df) {
+  df <- df %>%
+    as.matrix %>%
+    cor %>%
+    as.data.frame %>%
+    rownames_to_column(var = "var1") %>%
+    gather(var2, value, -var1) %>%
+    mutate(var1 = gsub("(.*?)_R$", "\\1", var1),
+           var2 = gsub("(.*?)_R$", "\\1", var2))
+  return(df)
+}
+
+# Creates a data frame with p-values for comparing presence of specific genes between animal species
+do_chisq_test <- function(df) {
+  df <- df %>%
+    slice(expand.grid(1:length(unique(species)), 1:length(unique(species))) %>% rev %>% 
+          filter(Var2 < Var1) %>% t) %>%
+    mutate(test = rep(1:(n()/2), each = 2)) %>%
+    group_by(test) %>%
+    do(data_frame(gene = .$key,
+                  test = first(.$test),
+                  species1 = first(.$species),
+                  species2 = last(.$species),
+                  data = list(matrix(c(.$Absent,
+                                       .$Present),
+                                     ncol = 2)))) %>%
+    mutate(chi_test = map(data, chisq.test, correct = FALSE)) %>%
+    mutate(p.value = map_dbl(chi_test, "p.value"),
+           dupl = duplicated(test)) %>%
+    filter(dupl == FALSE) %>%
+    select(gene, species1, species2, p.value) %>%
+    filter(p.value < 0.05)
+  return(df)
+}
 ```
 
 # Import data
@@ -386,18 +427,6 @@ test <- mic_data %>%
   split(., f = .$species) %>%
   lapply(., function(x) select(x, -species))
 
-create_corr_matrix <- function(df) {
-  df <- df %>%
-    as.matrix %>%
-    cor %>%
-    as.data.frame %>%
-    rownames_to_column(var = "var1") %>%
-    gather(var2, value, -var1) %>%
-    mutate(var1 = gsub("(.*?)_R$", "\\1", var1),
-           var2 = gsub("(.*?)_R$", "\\1", var2))
-  return(df)
-}
-
 corr_matrices <- lapply(test, function(x) create_corr_matrix(x)) %>%
   bind_rows(.id = "species")
 
@@ -469,44 +498,49 @@ megares_long %>%
 
 # Statistics
 
-## Significance test for the percent presence of qnrB19 and qnrS1 between animal species
+## Significance test for the percent presence of acquired genes between animal species
+Only significant values will be presented in the table below (p < 0.05).
 ```{r message=FALSE, warning=FALSE}
-specific_qnr <- qnr_data %>%
-  filter(key %in% c("qnrB19", "qnrS1")) %>%
+acquired_genes_list <- resfinder_results %>%
+  left_join(isolate_data, by = "id") %>%
+  gather(key, value, gene_names) %>%
+  group_by(key, value, species) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(value = if_else(value == 1, "Present", "Absent")) %>%
+  spread(value, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total*100, 1),
+         lwr = round(get_binCI(Present, Total)[1], 1),
+         upr = round(get_binCI(Present, Total)[2], 1)) %>%
   select(key, species, Present, Absent) %>%
   split(f = .$key)
 
-do_chisq_test <- function(df) {
-  df <- df %>%
-    slice(expand.grid(1:length(unique(species)), 1:length(unique(species))) %>% rev %>% 
-          filter(Var2 < Var1) %>% t) %>%
-    mutate(test = rep(1:(n()/2), each = 2)) %>%
-    group_by(test) %>%
-    do(data_frame(gene = .$key,
-                  test = first(.$test),
-                  species1 = first(.$species),
-                  species2 = last(.$species),
-                  data = list(matrix(c(.$Absent,
-                                       .$Present),
-                                     ncol = 2)))) %>%
-    mutate(chi_test = map(data, chisq.test, correct = FALSE)) %>%
-    mutate(p.value = map_dbl(chi_test, "p.value"),
-           dupl = duplicated(test)) %>%
-    filter(dupl == FALSE) %>%
-    select(gene, species1, species2, p.value) %>%
-    filter(p.value < 0.05)
-  return(df)
-}
-
-p_values <- lapply(specific_qnr, function(x) do_chisq_test(x)) %>%
+p_values_acquired <- lapply(acquired_genes_list, function(x) do_chisq_test(x)) %>%
   bind_rows()
 
-p_values
+p_values_acquired
 ```
 
+## Significance test for the percent presence of mutations in intrinsic genes between animal species
+Only significant values will be presented in the table below (p < 0.05).
 
+```{r message=FALSE, warning=FALSE}
+mut_genes_list <- megares_results %>%
+  left_join(isolate_data, by = "id") %>%
+  gather(key, value, mut_names) %>%
+  filter(key != "acrB") %>%
+  group_by(key, value, species) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(value = if_else(value == 1, "Present", "Absent")) %>%
+  spread(value, n, fill = 0) %>%
+  select(key, species, Present, Absent) %>%
+  split(f = .$key)
 
+p_values_mut <-  lapply(mut_genes_list, function(x) do_chisq_test(x)) %>%
+  bind_rows()
 
-
-
-
+p_values_mut
+```
