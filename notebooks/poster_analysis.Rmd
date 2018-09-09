@@ -25,7 +25,7 @@ This notebook presents the analysis of whole genome data for the poster "Quinolo
 ```{r, include = FALSE}
 # Libraries
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data)
+pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr)
 
 # Functions
 
@@ -175,6 +175,7 @@ megares_results %>%
 ```
 
 ## Acquired genes per animal species
+### Total acquired genes per animal species
 ```{r}
 gene_names <- names(resfinder_results)
 
@@ -207,6 +208,40 @@ resfinder_results %>%
         axis.title.x = element_blank())+
   facet_wrap(~species)
 ```
+
+### Qnr-genes per animal species
+```{r}
+qnr_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
+
+qnr_data <- resfinder_results %>%
+  left_join(isolate_data, by = "id") %>%
+  gather(key, value, qnr_genes) %>%
+  group_by(key, value, species) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(value = if_else(value == 1, "Present", "Absent")) %>%
+  spread(value, n, fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total*100, 1),
+         lwr = round(get_binCI(Present, Total)[1], 1),
+         upr = round(get_binCI(Present, Total)[2], 1))
+
+ggplot(qnr_data, aes(key, Percent, fill = species))+
+  geom_col(color = "black",
+           position = position_dodge(0.9))+
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                width = 0.6,
+                position = position_dodge(0.9))+
+  scale_fill_brewer(palette = "Paired")+
+  labs(y = "Percent (%) of isolates",
+       fill = NULL)+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
+        axis.title.x = element_blank())
+```
+
+
 
 ## Mutations in intrinsic genes per animal species
 ```{r}
@@ -366,7 +401,8 @@ create_corr_matrix <- function(df) {
 corr_matrices <- lapply(test, function(x) create_corr_matrix(x)) %>%
   bind_rows(.id = "species")
 
-cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a", "#ffd73e","#eec73a","#e29421","#f05336","#ce472e")
+cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a",
+          "#ffd73e","#eec73a","#e29421","#f05336","#ce472e")
 
 ggplot(corr_matrices, aes(var1, var2, fill = value))+
   geom_tile(color = "white")+
@@ -431,7 +467,42 @@ megares_long %>%
   
 ```
 
+# Statistics
 
+## Significance test for the percent presence of qnrB19 and qnrS1 between animal species
+```{r message=FALSE, warning=FALSE}
+specific_qnr <- qnr_data %>%
+  filter(key %in% c("qnrB19", "qnrS1")) %>%
+  select(key, species, Present, Absent) %>%
+  split(f = .$key)
+
+do_chisq_test <- function(df) {
+  df <- df %>%
+    slice(expand.grid(1:length(unique(species)), 1:length(unique(species))) %>% rev %>% 
+          filter(Var2 < Var1) %>% t) %>%
+    mutate(test = rep(1:(n()/2), each = 2)) %>%
+    group_by(test) %>%
+    do(data_frame(gene = .$key,
+                  test = first(.$test),
+                  species1 = first(.$species),
+                  species2 = last(.$species),
+                  data = list(matrix(c(.$Absent,
+                                       .$Present),
+                                     ncol = 2)))) %>%
+    mutate(chi_test = map(data, chisq.test, correct = FALSE)) %>%
+    mutate(p.value = map_dbl(chi_test, "p.value"),
+           dupl = duplicated(test)) %>%
+    filter(dupl == FALSE) %>%
+    select(gene, species1, species2, p.value) %>%
+    filter(p.value < 0.05)
+  return(df)
+}
+
+p_values <- lapply(specific_qnr, function(x) do_chisq_test(x)) %>%
+  bind_rows(.id = "gene")
+
+p_values
+```
 
 
 
