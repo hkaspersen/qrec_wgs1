@@ -499,7 +499,7 @@ do_chisq_test <- function(df) {
 }
 
 p_values <- lapply(specific_qnr, function(x) do_chisq_test(x)) %>%
-  bind_rows(.id = "gene")
+  bind_rows()
 
 p_values
 ```

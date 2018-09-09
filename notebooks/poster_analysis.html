@@ -759,12 +759,12 @@ do_chisq_test &lt;-<span class="st"> </span><span class="cf">function</span>(df)
 }
 
 p_values &lt;-<span class="st"> </span><span class="kw">lapply</span>(specific_qnr, <span class="cf">function</span>(x) <span class="kw">do_chisq_test</span>(x)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">bind_rows</span>(<span class="dt">.id =</span> <span class="st">&quot;gene&quot;</span>)
+<span class="st">  </span><span class="kw">bind_rows</span>()
 
 p_values</code></pre></div>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["gene"],"name":[1],"type":["chr"],"align":["left"]},{"label":["test"],"name":[2],"type":["int"],"align":["right"]},{"label":["gene"],"name":[3],"type":["chr"],"align":["left"]},{"label":["species1"],"name":[4],"type":["chr"],"align":["left"]},{"label":["species2"],"name":[5],"type":["chr"],"align":["left"]},{"label":["p.value"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"qnrB19","2":"1","3":"qnrB19","4":"Broiler","5":"Pig","6":"0.000977889"},{"1":"qnrB19","2":"3","3":"qnrB19","4":"Broiler","5":"Wild bird","6":"0.010846329"},{"1":"qnrB19","2":"4","3":"qnrB19","4":"Pig","5":"Red fox","6":"0.044476435"},{"1":"qnrS1","2":"3","3":"qnrS1","4":"Broiler","5":"Wild bird","6":"0.000728919"},{"1":"qnrS1","2":"5","3":"qnrS1","4":"Pig","5":"Wild bird","6":"0.033140145"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+{"columns":[{"label":["test"],"name":[1],"type":["int"],"align":["right"]},{"label":["gene"],"name":[2],"type":["chr"],"align":["left"]},{"label":["species1"],"name":[3],"type":["chr"],"align":["left"]},{"label":["species2"],"name":[4],"type":["chr"],"align":["left"]},{"label":["p.value"],"name":[5],"type":["dbl"],"align":["right"]}],"data":[{"1":"1","2":"qnrB19","3":"Broiler","4":"Pig","5":"0.000977889"},{"1":"3","2":"qnrB19","3":"Broiler","4":"Wild bird","5":"0.010846329"},{"1":"4","2":"qnrB19","3":"Pig","4":"Red fox","5":"0.044476435"},{"1":"3","2":"qnrS1","3":"Broiler","4":"Wild bird","5":"0.000728919"},{"1":"5","2":"qnrS1","3":"Pig","4":"Wild bird","5":"0.033140145"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 </div>
