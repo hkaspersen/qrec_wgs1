@@ -141,6 +141,45 @@ per_seq <- isolate_data %>%
 per_seq
 ```
 
+## Total percentage of isolates with detected acquired genes and mutant intrinsic genes
+
+### Percent acquired genes
+```{r}
+resfinder_results %>%
+  select(-c(id, type)) %>%
+  mutate(total = rowSums(.),
+         result = if_else(total != 0, 1, 0)) %>%
+  group_by(result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(result = if_else(result == 0, "Absent", "Present")) %>%
+  spread(result, n) %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2))
+
+```
+
+### Percent mutations in intrinsic genes
+```{r}
+megares_results %>%
+  select(-c(id, type, acrB)) %>%
+  mutate(total = rowSums(., na.rm = TRUE),
+         result = if_else(total != 0, 1, 0)) %>%
+  group_by(result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(result = if_else(result == 0, "Absent", "Present")) %>%
+  spread(result, n) %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2))
+```
+
+
+
 ## MLST Data
 
 ### Total MLST 
@@ -161,7 +200,13 @@ mlst_per_species <- mlst_results %>%
 mlst_per_species
 ```
 
-
+### Number of sequence types per animal species
+```{r}
+total_ST_per_species <- mlst_per_species %>%
+  group_by(species) %>%
+  count()
+total_ST_per_species
+```
 
 # Figures
 ## Percent presence of acquired genes in total
@@ -281,8 +326,6 @@ ggplot(qnr_data, aes(key, Percent, fill = species))+
   theme(axis.text.x = element_text(angle = 90, size = 8, hjust = 1, vjust = 0.4),
         axis.title.x = element_blank())
 ```
-
-
 
 ## Mutations in intrinsic genes per animal species
 ```{r}
@@ -481,7 +524,7 @@ plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
 ### MIC correlation plots per animal species
 
 ```{r}
-test <- mic_data %>%
+mic_per_species <- mic_data %>%
   select(-antres) %>%
   left_join(species_data, by = "id") %>%
   mutate(SMX_R = ifelse(SMX > 64, 1, 0),
@@ -497,7 +540,7 @@ test <- mic_data %>%
   split(., f = .$species) %>%
   lapply(., function(x) select(x, -species))
 
-corr_matrices <- lapply(test, function(x) create_corr_matrix(x)) %>%
+corr_matrices <- lapply(mic_per_species, function(x) create_corr_matrix(x)) %>%
   bind_rows(.id = "species")
 
 cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a",

@@ -399,10 +399,55 @@ per_seq</code></pre></div>
   </script>
 </div>
 </div>
+<div id="total-percentage-of-isolates-with-detected-acquired-genes-and-mutant-intrinsic-genes" class="section level2">
+<h2><span class="header-section-number">4.3</span> Total percentage of isolates with detected acquired genes and mutant intrinsic genes</h2>
+<div id="percent-acquired-genes" class="section level3">
+<h3><span class="header-section-number">4.3.1</span> Percent acquired genes</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">resfinder_results <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span><span class="kw">c</span>(id, type)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">total =</span> <span class="kw">rowSums</span>(.),
+         <span class="dt">result =</span> <span class="kw">if_else</span>(total <span class="op">!=</span><span class="st"> </span><span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">group_by</span>(result) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">count</span>() <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">ungroup</span>() <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">result =</span> <span class="kw">if_else</span>(result <span class="op">==</span><span class="st"> </span><span class="dv">0</span>, <span class="st">&quot;Absent&quot;</span>, <span class="st">&quot;Present&quot;</span>)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">spread</span>(result, n) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">Total =</span> Present <span class="op">+</span><span class="st"> </span>Absent,
+         <span class="dt">Percent =</span> <span class="kw">round</span>(Present<span class="op">/</span>Total <span class="op">*</span><span class="st"> </span><span class="dv">100</span>,<span class="dv">2</span>),
+         <span class="dt">lwr =</span> <span class="kw">round</span>(<span class="kw">get_binCI</span>(Present, Total)[<span class="dv">1</span>], <span class="dv">2</span>),
+         <span class="dt">upr =</span> <span class="kw">round</span>(<span class="kw">get_binCI</span>(Present, Total)[<span class="dv">2</span>], <span class="dv">2</span>))</code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Absent"],"name":[1],"type":["int"],"align":["right"]},{"label":["Present"],"name":[2],"type":["int"],"align":["right"]},{"label":["Total"],"name":[3],"type":["int"],"align":["right"]},{"label":["Percent"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["lwr"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["upr"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"91","2":"194","3":"285","4":"68.07","5":"62.31","6":"73.45"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+<div id="percent-mutations-in-intrinsic-genes" class="section level3">
+<h3><span class="header-section-number">4.3.2</span> Percent mutations in intrinsic genes</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">megares_results <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span><span class="kw">c</span>(id, type, acrB)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">total =</span> <span class="kw">rowSums</span>(., <span class="dt">na.rm =</span> <span class="ot">TRUE</span>),
+         <span class="dt">result =</span> <span class="kw">if_else</span>(total <span class="op">!=</span><span class="st"> </span><span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">group_by</span>(result) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">count</span>() <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">ungroup</span>() <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">result =</span> <span class="kw">if_else</span>(result <span class="op">==</span><span class="st"> </span><span class="dv">0</span>, <span class="st">&quot;Absent&quot;</span>, <span class="st">&quot;Present&quot;</span>)) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">spread</span>(result, n) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">Total =</span> Present <span class="op">+</span><span class="st"> </span>Absent,
+         <span class="dt">Percent =</span> <span class="kw">round</span>(Present<span class="op">/</span>Total <span class="op">*</span><span class="st"> </span><span class="dv">100</span>,<span class="dv">2</span>),
+         <span class="dt">lwr =</span> <span class="kw">round</span>(<span class="kw">get_binCI</span>(Present, Total)[<span class="dv">1</span>], <span class="dv">2</span>),
+         <span class="dt">upr =</span> <span class="kw">round</span>(<span class="kw">get_binCI</span>(Present, Total)[<span class="dv">2</span>], <span class="dv">2</span>))</code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["Absent"],"name":[1],"type":["int"],"align":["right"]},{"label":["Present"],"name":[2],"type":["int"],"align":["right"]},{"label":["Total"],"name":[3],"type":["int"],"align":["right"]},{"label":["Percent"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["lwr"],"name":[5],"type":["dbl"],"align":["right"]},{"label":["upr"],"name":[6],"type":["dbl"],"align":["right"]}],"data":[{"1":"7","2":"278","3":"285","4":"97.54","5":"95.01","6":"99.01"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+</div>
 <div id="mlst-data" class="section level2">
-<h2><span class="header-section-number">4.3</span> MLST Data</h2>
+<h2><span class="header-section-number">4.4</span> MLST Data</h2>
 <div id="total-mlst" class="section level3">
-<h3><span class="header-section-number">4.3.1</span> Total MLST</h3>
+<h3><span class="header-section-number">4.4.1</span> Total MLST</h3>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">total_mlst &lt;-<span class="st"> </span>mlst_results <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">left_join</span>(species_data, <span class="dt">by =</span> <span class="st">&quot;id&quot;</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">group_by</span>(ST) <span class="op">%&gt;%</span>
@@ -415,7 +460,7 @@ total_mlst</code></pre></div>
 </div>
 </div>
 <div id="mlst-per-animal-species" class="section level3">
-<h3><span class="header-section-number">4.3.2</span> MLST per animal species</h3>
+<h3><span class="header-section-number">4.4.2</span> MLST per animal species</h3>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mlst_per_species &lt;-<span class="st"> </span>mlst_results <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">left_join</span>(species_data, <span class="dt">by =</span> <span class="st">&quot;id&quot;</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">group_by</span>(ST, species) <span class="op">%&gt;%</span>
@@ -424,6 +469,18 @@ mlst_per_species</code></pre></div>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
 {"columns":[{"label":["ST"],"name":[1],"type":["chr"],"align":["left"]},{"label":["species"],"name":[2],"type":["chr"],"align":["left"]},{"label":["n"],"name":[3],"type":["int"],"align":["right"]}],"data":[{"1":"10","2":"Broiler","3":"15"},{"1":"10","2":"Pig","3":"14"},{"1":"10","2":"Red fox","3":"6"},{"1":"10","2":"Wild bird","3":"3"},{"1":"10*","2":"Pig","3":"1"},{"1":"100","2":"Pig","3":"1"},{"1":"101","2":"Pig","3":"3"},{"1":"101","2":"Wild bird","3":"1"},{"1":"1011","2":"Broiler","3":"1"},{"1":"1011","2":"Red fox","3":"1"},{"1":"1011","2":"Wild bird","3":"1"},{"1":"1056","2":"Broiler","3":"1"},{"1":"1079","2":"Broiler","3":"1"},{"1":"1140","2":"Broiler","3":"1"},{"1":"1148","2":"Red fox","3":"1"},{"1":"115","2":"Broiler","3":"2"},{"1":"117","2":"Broiler","3":"3"},{"1":"117","2":"Pig","3":"10"},{"1":"117*","2":"Broiler","3":"1"},{"1":"118","2":"Broiler","3":"1"},{"1":"1246","2":"Broiler","3":"1"},{"1":"131","2":"Red fox","3":"3"},{"1":"131","2":"Wild bird","3":"1"},{"1":"137","2":"Pig","3":"1"},{"1":"141","2":"Red fox","3":"1"},{"1":"141","2":"Wild bird","3":"1"},{"1":"1421","2":"Pig","3":"1"},{"1":"1431","2":"Wild bird","3":"2"},{"1":"155","2":"Broiler","3":"4"},{"1":"155","2":"Pig","3":"3"},{"1":"155","2":"Red fox","3":"2"},{"1":"155","2":"Wild bird","3":"4"},{"1":"162","2":"Broiler","3":"10"},{"1":"162","2":"Red fox","3":"7"},{"1":"162","2":"Wild bird","3":"7"},{"1":"167","2":"Wild bird","3":"2"},{"1":"1851","2":"Wild bird","3":"1"},{"1":"191","2":"Broiler","3":"1"},{"1":"191","2":"Wild bird","3":"1"},{"1":"206","2":"Red fox","3":"1"},{"1":"2068","2":"Wild bird","3":"2"},{"1":"2079","2":"Broiler","3":"1"},{"1":"215","2":"Pig","3":"1"},{"1":"2165","2":"Red fox","3":"1"},{"1":"224*","2":"Wild bird","3":"1"},{"1":"23","2":"Pig","3":"2"},{"1":"23","2":"Red fox","3":"1"},{"1":"23","2":"Wild bird","3":"2"},{"1":"2496","2":"Wild bird","3":"3"},{"1":"2705","2":"Red fox","3":"1"},{"1":"278","2":"Pig","3":"1"},{"1":"278*","2":"Red fox","3":"1"},{"1":"3107","2":"Broiler","3":"2"},{"1":"3190","2":"Broiler","3":"1"},{"1":"3377*","2":"Pig","3":"1"},{"1":"34","2":"Pig","3":"1"},{"1":"349","2":"Broiler","3":"6"},{"1":"349","2":"Red fox","3":"1"},{"1":"355","2":"Broiler","3":"13"},{"1":"355","2":"Red fox","3":"2"},{"1":"3595","2":"Pig","3":"4"},{"1":"362","2":"Wild bird","3":"1"},{"1":"3744","2":"Pig","3":"1"},{"1":"38","2":"Red fox","3":"1"},{"1":"394","2":"Pig","3":"3"},{"1":"4213","2":"Wild bird","3":"1"},{"1":"43","2":"Broiler","3":"3"},{"1":"43","2":"Red fox","3":"2"},{"1":"453","2":"Broiler","3":"5"},{"1":"453*","2":"Wild bird","3":"1"},{"1":"48","2":"Pig","3":"3"},{"1":"48","2":"Red fox","3":"4"},{"1":"48","2":"Wild bird","3":"1"},{"1":"4985","2":"Wild bird","3":"2"},{"1":"4994","2":"Broiler","3":"1"},{"1":"515*","2":"Wild bird","3":"1"},{"1":"54","2":"Wild bird","3":"1"},{"1":"540","2":"Wild bird","3":"5"},{"1":"5451","2":"Wild bird","3":"1"},{"1":"57","2":"Pig","3":"1"},{"1":"5708","2":"Wild bird","3":"1"},{"1":"58","2":"Pig","3":"4"},{"1":"58","2":"Red fox","3":"7"},{"1":"58","2":"Wild bird","3":"9"},{"1":"602","2":"Broiler","3":"5"},{"1":"602","2":"Red fox","3":"1"},{"1":"6031","2":"Pig","3":"1"},{"1":"641","2":"Broiler","3":"1"},{"1":"641","2":"Pig","3":"2"},{"1":"648","2":"Red fox","3":"1"},{"1":"68","2":"Broiler","3":"2"},{"1":"683","2":"Wild bird","3":"1"},{"1":"685","2":"Pig","3":"1"},{"1":"685","2":"Wild bird","3":"1"},{"1":"69","2":"Red fox","3":"1"},{"1":"69","2":"Wild bird","3":"2"},{"1":"694","2":"Wild bird","3":"1"},{"1":"70","2":"Pig","3":"1"},{"1":"7036","2":"Wild bird","3":"1"},{"1":"744","2":"Pig","3":"4"},{"1":"744","2":"Red fox","3":"1"},{"1":"744","2":"Wild bird","3":"3"},{"1":"752","2":"Broiler","3":"3"},{"1":"752","2":"Red fox","3":"2"},{"1":"752*","2":"Broiler","3":"1"},{"1":"7529","2":"Pig","3":"1"},{"1":"753","2":"Pig","3":"1"},{"1":"7593","2":"Red fox","3":"1"},{"1":"7804","2":"Red fox","3":"1"},{"1":"88","2":"Pig","3":"3"},{"1":"88","2":"Red fox","3":"1"},{"1":"88*","2":"Pig","3":"1"},{"1":"93","2":"Broiler","3":"1"},{"1":"93","2":"Pig","3":"2"},{"1":"95","2":"Pig","3":"1"},{"1":"95","2":"Wild bird","3":"1"},{"1":"ND","2":"Wild bird","3":"3"},{"1":"Novel","2":"Broiler","3":"1"},{"1":"Novel","2":"Pig","3":"1"},{"1":"Novel*","2":"Red fox","3":"1"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+</div>
+<div id="number-of-sequence-types-per-animal-species" class="section level3">
+<h3><span class="header-section-number">4.4.3</span> Number of sequence types per animal species</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">total_ST_per_species &lt;-<span class="st"> </span>mlst_per_species <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">group_by</span>(species) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">count</span>()
+total_ST_per_species</code></pre></div>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["species"],"name":[1],"type":["chr"],"align":["left"]},{"label":["nn"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"Broiler","2":"28"},{"1":"Pig","2":"31"},{"1":"Red fox","2":"27"},{"1":"Wild bird","2":"34"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
   </script>
 </div>
 </div>
@@ -747,7 +804,7 @@ p2 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(micplot_data,
 </div>
 <div id="mic-correlation-plots-per-animal-species" class="section level3">
 <h3><span class="header-section-number">5.7.2</span> MIC correlation plots per animal species</h3>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">test &lt;-<span class="st"> </span>mic_data <span class="op">%&gt;%</span>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mic_per_species &lt;-<span class="st"> </span>mic_data <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>antres) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">left_join</span>(species_data, <span class="dt">by =</span> <span class="st">&quot;id&quot;</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">SMX_R =</span> <span class="kw">ifelse</span>(SMX <span class="op">&gt;</span><span class="st"> </span><span class="dv">64</span>, <span class="dv">1</span>, <span class="dv">0</span>),
@@ -763,7 +820,7 @@ p2 &lt;-<span class="st"> </span><span class="kw">ggplot</span>(micplot_data,
 <span class="st">  </span><span class="kw">split</span>(., <span class="dt">f =</span> .<span class="op">$</span>species) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">lapply</span>(., <span class="cf">function</span>(x) <span class="kw">select</span>(x, <span class="op">-</span>species))
 
-corr_matrices &lt;-<span class="st"> </span><span class="kw">lapply</span>(test, <span class="cf">function</span>(x) <span class="kw">create_corr_matrix</span>(x)) <span class="op">%&gt;%</span>
+corr_matrices &lt;-<span class="st"> </span><span class="kw">lapply</span>(mic_per_species, <span class="cf">function</span>(x) <span class="kw">create_corr_matrix</span>(x)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">bind_rows</span>(<span class="dt">.id =</span> <span class="st">&quot;species&quot;</span>)</code></pre></div>
 <pre><code>## Warning in cor(.): the standard deviation is zero</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;#e7f0fa&quot;</span>,<span class="st">&quot;#c9e2f6&quot;</span>,<span class="st">&quot;#95cbee&quot;</span>,<span class="st">&quot;#0099dc&quot;</span>,<span class="st">&quot;#4ab04a&quot;</span>,
