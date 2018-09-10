@@ -320,6 +320,76 @@ megares_results %>%
   facet_wrap(~species)
 ```
 
+## Correlation plot for mutations in intrinsic genes
+```{r}
+corr_megares <- megares_results %>%
+  select(-c(type, acrB)) %>%
+  left_join(species_data, by = "id") %>%
+  mutate(compl = complete.cases(.)) %>%
+  filter(compl == TRUE) %>%
+  split(., f = .$species) %>%
+  lapply(., function(x) select(x, -c(species, id, compl)))
+
+mut_corr_matrices <- lapply(corr_megares, function(x) create_corr_matrix(x)) %>%
+  bind_rows(.id = "species")
+
+cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a",
+          "#ffd73e","#eec73a","#e29421","#f05336","#ce472e")
+
+ggplot(mut_corr_matrices, aes(var1, var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradientn(colors=cols,
+                       na.value="grey95",
+                       limits=c(-1, 1),
+                       guide=guide_colourbar(ticks=T,nbin=10,
+                                             barheight=.5,label=T, 
+                                             barwidth=10))+
+  labs(fill = NULL)+
+  theme_classic()+
+  theme(axis.text = element_text(size = 7),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+        axis.title = element_blank(),
+        legend.position="bottom",
+        legend.justification="center",
+        legend.direction="horizontal")+
+  coord_fixed()+
+  facet_wrap(~species)
+```
+
+## Correlation plot for acquired genes
+```{r message=FALSE, warning=FALSE}
+corr_resfinder <- resfinder_results %>%
+  select(-type) %>%
+  left_join(species_data, by = "id") %>%
+  split(., f = .$species) %>%
+  lapply(., function(x) select(x, -c(species, id)))
+
+acquired_corr_matrices <- lapply(corr_resfinder, function(x) create_corr_matrix(x)) %>%
+  bind_rows(.id = "species")
+
+cols <- c("#e7f0fa","#c9e2f6","#95cbee","#0099dc","#4ab04a",
+          "#ffd73e","#eec73a","#e29421","#f05336","#ce472e")
+
+ggplot(acquired_corr_matrices, aes(var1, var2, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradientn(colors=cols,
+                       na.value="grey95",
+                       limits=c(-1, 1),
+                       guide=guide_colourbar(ticks=T,nbin=10,
+                                             barheight=.5,label=T, 
+                                             barwidth=10))+
+  labs(fill = NULL)+
+  theme_classic()+
+  theme(axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+        axis.title = element_blank(),
+        legend.position="bottom",
+        legend.justification="center",
+        legend.direction="horizontal")+
+  coord_fixed()+
+  facet_wrap(~species)
+```
+
 ## MIC plots
 
 ### MIC Distribution for generated groups
