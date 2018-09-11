@@ -22,11 +22,11 @@ output:
 This notebook presents the analysis of whole genome data for the poster "Quinolone resistance mechanisms found in E. coli from four animal species in Norway
 ", presented at the ASM NGS Conference in Washington D.C. September 2018.
 
-```{r, include = FALSE}
+Please press the "code" button for each chunk to view code.
+```{r message=FALSE, warning=FALSE}
 # Libraries
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr)
-
 ```
 
 # Functions
@@ -75,48 +75,56 @@ do_chisq_test <- function(df) {
     filter(p.value < 0.05)
   return(df)
 }
+
+"%not_in%" <- Negate("%in%")
+
 ```
 
 # Import data
-This chunk imports data from MLST and ARIBA AMR gene detection results. Isolate data is also imported.
+This chunk imports data from MLST and ARIBA[1] AMR gene detection results. Isolate data is also imported.
+Four isolates were excluded due to bad sequence quality.
 ```{r}
 # Isolate data, including DNA extraction results, species,
 # method of isolation, and sequencing methodology
 isolate_data <- read.table("../data/isolate_data.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F)
+                           stringsAsFactors = F) %>%
+  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 # Total MIC profile for all isolates in this study
 mic_data <- read.table("../data/mic_data.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F)
+                           stringsAsFactors = F) %>%
+  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 # ARIBA MLST results for each isolate
 mlst_results <- read.table("../data/mlst_results.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F)
+                           stringsAsFactors = F) %>%
+  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 # ARIBA AMR gene results (megares database, for mutations in intrinsic genes)
 megares_results <- read.table("../data/megares_results.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F) %>%
-  select(-acrB)
+  select(-acrB) %>%
+  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 # ARIBA AMR gene results (resfinder database, for acquired genes)
 resfinder_results <- read.table("../data/resfinder_results.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F)
+                           stringsAsFactors = F) %>%
+  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 species_data <- select(isolate_data, c(id, species))
 ```
 
 # Tables
-
 ## Samples per species
 ```{r}
 per_species <- isolate_data %>%
@@ -126,16 +134,21 @@ per_species
 ```
 
 ## Samples per sequencing method
+The isolates were sequenced by three different methods due to being part of different projects. The table below lists each sequencer used, library prep, and the resulting read length.
 ```{r}
 per_seq <- isolate_data %>%
   group_by(sequencer, libprep, read_length) %>%
-  count()
+  count() %>%
+  rename("Sequencer" = sequencer,
+         "Library Prep" = libprep,
+         "Read Length" = read_length)
 per_seq
 ```
 
 ## Total percentage of isolates with detected acquired genes and mutant intrinsic genes
 
 ### Percent acquired genes
+The total percentage of presence of acquired genes identified with ARIBA.
 ```{r}
 resfinder_results %>%
   select(-c(id, type)) %>%
@@ -149,11 +162,13 @@ resfinder_results %>%
   mutate(Total = Present + Absent,
          Percent = round(Present/Total * 100,2),
          lwr = round(get_binCI(Present, Total)[1], 2),
-         upr = round(get_binCI(Present, Total)[2], 2))
-
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr))
 ```
 
 ### Percent mutations in intrinsic genes
+The total percentage of mutations in intrinsic genes identified with ARIBA.
 ```{r}
 megares_results %>%
   select(-c(id, type)) %>%
@@ -167,14 +182,14 @@ megares_results %>%
   mutate(Total = Present + Absent,
          Percent = round(Present/Total * 100,2),
          lwr = round(get_binCI(Present, Total)[1], 2),
-         upr = round(get_binCI(Present, Total)[2], 2))
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr))
 ```
 
-
-
 ## MLST Data
-
-### Total MLST 
+### Total MLST
+The total amount of sequence types identified.
 ```{r}
 total_mlst <- mlst_results %>%
   left_join(species_data, by = "id") %>%
@@ -184,6 +199,7 @@ total_mlst
 ```
 
 ### MLST per animal species
+Sequence types for each animal species.
 ```{r}
 mlst_per_species <- mlst_results %>%
   left_join(species_data, by = "id") %>%
@@ -193,6 +209,7 @@ mlst_per_species
 ```
 
 ### Number of sequence types per animal species
+The total amount of unique sequence types per animal species.
 ```{r}
 total_ST_per_species <- mlst_per_species %>%
   group_by(species) %>%
@@ -201,7 +218,22 @@ total_ST_per_species
 ```
 
 # Figures
+## Total MLST
+This figure presents the amount of isolates of each sequence type in total.
+```{r}
+mlst_results %>%
+  left_join(species_data, by = "id") %>%
+  group_by(ST) %>%
+  count() %>%
+  ggplot(aes(reorder(ST, -n), n))+
+  geom_col(color = "black")+
+  labs(x = "Sequence Types")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = 90, size = 6, hjust = 1, vjust = 0.3))
+```
+
 ## Percent presence of acquired genes in total
+This plot presents the total percent occurrence of acquired genes identified with ARIBA, with 95 % confidence intervals.
 ```{r}
 resfinder_results %>%
   gather(gene, result, -c(id, type)) %>%
@@ -226,6 +258,7 @@ resfinder_results %>%
 ```
 
 ## Percent presence of mutations in intrinsic genes in total
+This plot presents the total percent occurrence of mutations identified with ARIBA in intrinsic genes, with 95 % confidence intervals.
 ```{r}
 megares_results %>%
   gather(gene, result, -c(id, type)) %>%
@@ -254,6 +287,7 @@ megares_results %>%
 
 ## Acquired genes per animal species
 ### Total acquired genes per animal species
+This plot presents the percent occurrence of acquired genes identified with ARIBA, with 95 % confidence intervals. Please note that not only quinolone resistance mechanisms is included in this plot. Colors: ColorBrewer[2]
 ```{r}
 gene_names <- names(resfinder_results)
 
@@ -288,6 +322,7 @@ resfinder_results %>%
 ```
 
 ### Qnr-genes per animal species
+This plot presents the percent occurrence of qnr-genes identified with ARIBA in the four animal species, with 95 % confidence intervals.
 ```{r}
 qnr_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
 
@@ -320,6 +355,7 @@ ggplot(qnr_data, aes(key, Percent, fill = species))+
 ```
 
 ## Mutations in intrinsic genes per animal species
+This plot presents the percent occurrence of mutated intrinsic genes identified with ARIBA per animal species, with 95 % confidence intervals.
 ```{r}
 mut_names <- names(megares_results)
 
@@ -355,7 +391,9 @@ megares_results %>%
   facet_wrap(~species)
 ```
 
-## Correlation plot for mutations in intrinsic genes
+## Correlation plots
+These plots present the $\phi$-coefficient for the association between the presence/absence of mutations in intrinsic genes, and the presence/absence of acquired genes.
+### Mutations in intrinsic genes
 ```{r}
 corr_megares <- megares_results %>%
   select(-type) %>%
@@ -391,7 +429,7 @@ ggplot(mut_corr_matrices, aes(var1, var2, fill = value))+
   facet_wrap(~species)
 ```
 
-## Correlation plot for acquired genes
+### Presence/absence of acquired genes
 ```{r message=FALSE, warning=FALSE}
 corr_resfinder <- resfinder_results %>%
   select(-type) %>%
@@ -426,8 +464,8 @@ ggplot(acquired_corr_matrices, aes(var1, var2, fill = value))+
 ```
 
 ## MIC plots
-
 ### MIC Distribution for generated groups
+This plot represents the MIC distribution for each auto-generated group of acquired genes and mutations combination. The plot on the bottom represents the group on the x-axis, and the acquired genes (top part of the horizontal line) and mutations in intrinsic genes (bottom part) that is present in the given group. The middle plot represents the MIC-distribution for the given group, where the size of the dot represents the amount of isolates at that MIC-value. Finally, the top plot represents the amount of isolates in the given group. All three plots have the same x-axis.
 ```{r message=FALSE, warning=FALSE}
 selected_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
 selected_mut <- c("gyrA","gyrB","parC","parE","marR")
@@ -448,12 +486,10 @@ micplot_data <- mic_data %>%
          value = ifelse(gene == "none" & value == 0, NA, value)) %>%
   na.omit()
 
-
 factor_breaks <- c(0.015, 0.03, 0.06, 0.12, 0.25, 0.5, 1, 2, 4, 8, 16)
   
 factor_levels <- c("0.015", "0.03", "0.06", "0.12", "0.25", "0.5", "1", "2", "4", 
                    "8", "16")
-
 
 p0 <- micplot_data %>%
   group_by(id, group) %>%
@@ -514,7 +550,7 @@ plot_grid(p0, p1, p2, align = "v", nrow = 3, rel_heights = c(1/4, 2/4, 1/4))
 ```
 
 ### MIC correlation plots per animal species
-
+This plot presents the $\phi$-coefficient for correlation between 1/0 values created from the MIC-values (1 = resistant, 0 = nonresistant).
 ```{r}
 mic_per_species <- mic_data %>%
   select(-antres) %>%
@@ -558,8 +594,12 @@ ggplot(corr_matrices, aes(var1, var2, fill = value))+
   facet_wrap(~species)
 ```
 
-## Heatmap plot
+## Minimum Spanning Tree of MLST profiles
+Minimum spanning tree of sequence types, created in Phyloviz[3] with goeBURST distance (TLV). Light blue = Broiler, dark blue = Pig, light green = Red fox, and dark green = Wild bird. Distances between sequence types are denotd as numbers on the lines. 
+![](../figures/mlst_tree_full.png)
 
+## Heatmap plot
+This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence.
 ```{r fig.height=30, fig.width=10, message=FALSE, warning=FALSE}
 megares_long <- megares_results %>%
   gather(gene, value, -c(id, type))
@@ -625,7 +665,6 @@ p_values_acquired
 
 ## Significance test for the percent presence of mutations in intrinsic genes between animal species
 Only significant values will be presented in the table below (p < 0.05).
-
 ```{r message=FALSE, warning=FALSE}
 mut_genes_list <- megares_results %>%
   left_join(isolate_data, by = "id") %>%
@@ -643,3 +682,10 @@ p_values_mut <-  lapply(mut_genes_list, function(x) do_chisq_test(x)) %>%
 
 p_values_mut
 ```
+
+# References
+[1] ARIBA: rapid antimicrobial resistance genotyping directly from sequencing reads Hunt M, Mather AE, Sánchez-Busó L, Page AJ, Parkhill J , Keane JA, Harris SR. Microbial Genomics 2017. doi:  https://doi.org/110.1099/mgen.0.000131
+
+[2] ColorBrewer: An online tool for selecting color schemes for maps. The Cartographic Journal 40(1): 27-37
+
+[3] PHYLOViZ: phylogenetic inference and data visualization for sequence based typing methods, Francisco A. P. et al.,  BMC Bioinformatics 2012, 13:87. doi: https://doi.org/10.1186/1471-2105-13-87
