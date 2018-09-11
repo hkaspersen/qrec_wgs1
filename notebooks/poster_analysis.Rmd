@@ -103,7 +103,8 @@ mlst_results <- read.table("../data/mlst_results.txt",
 megares_results <- read.table("../data/megares_results.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F)
+                           stringsAsFactors = F) %>%
+  select(-acrB)
 
 # ARIBA AMR gene results (resfinder database, for acquired genes)
 resfinder_results <- read.table("../data/resfinder_results.txt",
@@ -112,15 +113,6 @@ resfinder_results <- read.table("../data/resfinder_results.txt",
                            stringsAsFactors = F)
 
 species_data <- select(isolate_data, c(id, species))
-
-total_data <- isolate_data %>%
-  left_join(mic_data, by = "id") %>%
-  left_join(mlst_results, by = "id") %>%
-  rename("m_gyrB" = gyrB) %>%
-  left_join(resfinder_results, by = "id") %>%
-  select(-type) %>%
-  left_join(megares_results, by = "id") %>%
-  select(-type)
 ```
 
 # Tables
@@ -164,7 +156,7 @@ resfinder_results %>%
 ### Percent mutations in intrinsic genes
 ```{r}
 megares_results %>%
-  select(-c(id, type, acrB)) %>%
+  select(-c(id, type)) %>%
   mutate(total = rowSums(., na.rm = TRUE),
          result = if_else(total != 0, 1, 0)) %>%
   group_by(result) %>%
@@ -366,7 +358,7 @@ megares_results %>%
 ## Correlation plot for mutations in intrinsic genes
 ```{r}
 corr_megares <- megares_results %>%
-  select(-c(type, acrB)) %>%
+  select(-type) %>%
   left_join(species_data, by = "id") %>%
   mutate(compl = complete.cases(.)) %>%
   filter(compl == TRUE) %>%
@@ -444,7 +436,7 @@ micplot_data <- mic_data %>%
   select(id, CIP) %>%
   left_join(megares_results, by = "id") %>%
   left_join(resfinder_results, by = "id") %>%
-  select(-c(acrB, type.x, type.y)) %>%
+  select(-c(type.x, type.y)) %>%
   mutate(compl = complete.cases(.)) %>%
   filter(compl == TRUE) %>%
   select_at(vars(id, CIP,selected_mut, selected_genes)) %>%
@@ -638,7 +630,6 @@ Only significant values will be presented in the table below (p < 0.05).
 mut_genes_list <- megares_results %>%
   left_join(isolate_data, by = "id") %>%
   gather(key, value, mut_names) %>%
-  filter(key != "acrB") %>%
   group_by(key, value, species) %>%
   count() %>%
   ungroup() %>%
