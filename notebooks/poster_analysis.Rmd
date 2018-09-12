@@ -595,7 +595,7 @@ ggplot(corr_matrices, aes(var1, var2, fill = value))+
 ```
 
 ## Minimum Spanning Tree of MLST profiles
-Minimum spanning tree of sequence types, created in Phyloviz[3] with goeBURST distance (TLV). Light blue = Broiler, dark blue = Pig, light green = Red fox, and dark green = Wild bird. Distances between sequence types are denotd as numbers on the lines. 
+Minimum spanning tree of sequence types, created in Phyloviz[3] with goeBURST distance. Light blue = Broiler, dark blue = Pig, light green = Red fox, and dark green = Wild bird. Distances between sequence types are denoted as numbers on the lines. 
 ![](../figures/mlst_tree_full.png)
 
 ## Heatmap plot
@@ -662,14 +662,19 @@ heatmap_data <- megares_long %>%
 heatmap_data <- heatmap_data %>%
   mutate(id = factor(id, levels = p1b$data[[5]] %>% arrange(y) %>% pull(label)))
 
+# Color vector
+palette <- c("Broiler_1" = "#a6cee3", "Broiler_0" = "#a6cee326",
+             "Pig_1" = "#1f78b4", "Pig_0" = "#1f78b426",
+             "Red fox_1" = "#b2df8a", "Red fox_0" = "#b2df8a26",
+             "Wild bird_1" = "#33a02c", "Wild bird_0" = "#33a02c26")
+
 # Plot the heatmap
 p2 <- ggplot(heatmap_data, aes(fct_reorder(gene, type2),
              factor(id),
-             fill = fillcol,
-             alpha = result)) +
+             fill = fillcol)) +
   geom_tile(color = "white")+
   geom_vline(xintercept = 13.5)+
-  scale_fill_brewer(palette = "Paired",
+  scale_fill_manual(values = palette,
                     na.value = "#6b6767")+
   theme_minimal()+
   labs(fill = NULL)+
@@ -681,7 +686,7 @@ p2 <- ggplot(heatmap_data, aes(fct_reorder(gene, type2),
         axis.text.y = element_blank(),
         panel.grid = element_blank(),
         legend.position = "right")+
-  guides(alpha = FALSE)+
+  guides(fill = guide_legend(reverse = TRUE))+
   coord_fixed()
 
 # Arrange both plots into one figure
