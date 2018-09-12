@@ -26,7 +26,7 @@ Please press the "code" button for each chunk to view code.
 ```{r message=FALSE, warning=FALSE}
 # Libraries
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr)
+pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr, phangorn, gridExtra, ggtree)
 ```
 
 # Functions
@@ -601,13 +601,53 @@ Minimum spanning tree of sequence types, created in Phyloviz[3] with goeBURST di
 ## Heatmap plot
 This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence.
 ```{r fig.height=30, fig.width=10, message=FALSE, warning=FALSE}
+# Adjust MLST data frame
+sequence_types_adjusted <- mlst_results %>%
+  mutate_all(funs(gsub("\\*", "", .))) %>%
+  select(-ST)
+
+row.names(sequence_types_adjusted) <- sequence_types_adjusted$id
+
+mlst <- sequence_types_adjusted[,-1]
+
+# Calculate distance matrix from sequence typing alleles
+d.mlst.distances <- matrix(0, ncol=nrow(mlst), nrow=nrow(mlst))
+for (i in 1:(nrow(mlst)-1)) {
+  for (j in (i+1):nrow(mlst)){
+    d.mlst.distances[i,j] <- sum(mlst[i, ] != mlst[j, ])
+    d.mlst.distances[j,i] <- sum(mlst[i, ] != mlst[j, ])
+  }
+}
+
+# Create tree from distance matrix
+tree <- upgma(d.mlst.distances)
+id_label_tree <- tree 
+id_label_tree$tip.label <- sequence_types_adjusted$id
+tree$tip.label <- mlst_results$ST
+
+# Create dummy plot of id_label_tree to extract correct order of ID's
+p0 <- ggtree(id_label_tree)+
+  geom_treescale()+
+  geom_tiplab(align = TRUE, linesize = 0, hjust = -0.2, size = 1.5)+
+  xlim(0,3.6)
+
+# Get plot build data
+p1b <- ggplot_build(p0)
+
+# Save plot of tree
+p1 <- ggtree(tree)+
+  geom_treescale()+
+  geom_tiplab(align = TRUE, linesize = 0, hjust = -0.2, size = 1.5)+
+  xlim(0,3.6)
+
+# Create heatmap data frame from gene data
 megares_long <- megares_results %>%
   gather(gene, value, -c(id, type))
 
 resfinder_long <- resfinder_results %>%
   gather(gene, value, -c(id, type))
 
-megares_long %>%
+heatmap_data <- megares_long %>%
   rbind(resfinder_long) %>%
   mutate(type2 = ifelse(type == "mut", 1, 2),
          value = factor(ifelse(is.na(value) == TRUE, 2, value))) %>%
@@ -616,14 +656,19 @@ megares_long %>%
   left_join(species_data, by = "id") %>%
   mutate(result = ifelse(result == 2, NA, result),
          fillcol = paste(species, result, sep = "_"),
-         fillcol = ifelse(is.na(result) == TRUE, NA, fillcol)) %>%
-  ggplot(aes(fct_reorder(gene, type2),
-             factor(id,
-                    levels = unique(.[order(.$species,.$id),"id",drop = TRUE])),
+         fillcol = ifelse(is.na(result) == TRUE, NA, fillcol))
+
+# Arrange id-column after tip-labels in tree
+heatmap_data <- heatmap_data %>%
+  mutate(id = factor(id, levels = p1b$data[[5]] %>% arrange(y) %>% pull(label)))
+
+# Plot the heatmap
+p2 <- ggplot(heatmap_data, aes(fct_reorder(gene, type2),
+             factor(id),
              fill = fillcol,
              alpha = result)) +
   geom_tile(color = "white")+
-  geom_vline(xintercept = 14.5)+
+  geom_vline(xintercept = 13.5)+
   scale_fill_brewer(palette = "Paired",
                     na.value = "#6b6767")+
   theme_minimal()+
@@ -638,7 +683,15 @@ megares_long %>%
         legend.position = "right")+
   guides(alpha = FALSE)+
   coord_fixed()
-  
+
+# Arrange both plots into one figure
+grid.arrange(arrangeGrob(p1 + theme(plot.margin=margin(68,-10,149,0)),
+                         heights = c(1.9,-0.097)),
+             arrangeGrob(p2 + theme(axis.text.y=element_blank(),
+                                    plot.margin = margin(0,0,0,-8)),
+                         heights=c(0.98,-0.03)), 
+             ncol=2)
+
 ```
 
 # Statistics
