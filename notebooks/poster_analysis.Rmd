@@ -690,7 +690,7 @@ p2 <- ggplot(heatmap_data, aes(fct_reorder(gene, type2),
   coord_fixed()
 
 # Arrange both plots into one figure
-grid.arrange(arrangeGrob(p1 + theme(plot.margin=margin(60,-3,140,0)),
+grid.arrange(arrangeGrob(p1 + theme(plot.margin=margin(56,-2,140,0)),
                          heights = c(1.9,-0.097)),
              arrangeGrob(p2 + theme(axis.text.y=element_blank(),
                                     plot.margin = margin(0,0,0,-8)),
