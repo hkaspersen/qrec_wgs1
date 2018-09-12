@@ -889,7 +889,7 @@ corr_matrices &lt;-<span class="st"> </span><span class="kw">lapply</span>(mic_p
 </div>
 <div id="heatmap-plot" class="section level2">
 <h2><span class="header-section-number">5.9</span> Heatmap plot</h2>
-<p>This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence.</p>
+<p>This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors) and sequence type (dendrogram). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence. Part of the code below is taken from <a href="https://gist.github.com/scwatts/8c32d8f6dc44e352d89ae3de5f3a1125" class="uri">https://gist.github.com/scwatts/8c32d8f6dc44e352d89ae3de5f3a1125</a>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Adjust MLST data frame</span>
 sequence_types_adjusted &lt;-<span class="st"> </span>mlst_results <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate_all</span>(<span class="kw">funs</span>(<span class="kw">gsub</span>(<span class="st">&quot;</span><span class="ch">\\</span><span class="st">*&quot;</span>, <span class="st">&quot;&quot;</span>, .))) <span class="op">%&gt;%</span>

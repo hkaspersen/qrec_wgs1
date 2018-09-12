@@ -599,7 +599,7 @@ Minimum spanning tree of sequence types, created in Phyloviz[3] with goeBURST di
 ![](../figures/mlst_tree_full.png)
 
 ## Heatmap plot
-This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence.
+This plot represents the individual resistance mechanisms (x-axis) present in each isolate (y-axis), for each animal species (colors) and sequence type (dendrogram). Grey squares represent genes/mutations that ARIBA flagged as bad quality in their report. Dark color indicates presence, while the light color indicates absence. Part of the code below is taken from https://gist.github.com/scwatts/8c32d8f6dc44e352d89ae3de5f3a1125.
 ```{r fig.height=30, fig.width=10, message=FALSE, warning=FALSE}
 # Adjust MLST data frame
 sequence_types_adjusted <- mlst_results %>%
