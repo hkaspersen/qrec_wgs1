@@ -167,6 +167,29 @@ resfinder_results %>%
   select(-c(lwr, upr))
 ```
 
+### Percent qnr genes
+The total percentage of qnr genes identified with ARIBA.
+```{r}
+resfinder_results %>%
+  select_at(.vars = vars("qnrA1","qnrB19",
+                         "qnrB6","qnrB60",
+                         "qnrS1","qnrS2",
+                         "qnrS4")) %>%
+  mutate(total = rowSums(.),
+         result = if_else(total != 0, 1, 0)) %>%
+  group_by(result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(result = if_else(result == 0, "Absent", "Present")) %>%
+  spread(result, n) %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr))
+```
+
 ### Percent mutations in intrinsic genes
 The total percentage of mutations in intrinsic genes identified with ARIBA.
 ```{r}
