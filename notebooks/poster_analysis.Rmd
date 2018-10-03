@@ -19,8 +19,7 @@ output:
 ---
 
 # Description
-This notebook presents the analysis of whole genome data for the poster "Quinolone resistance mechanisms found in E. coli from four animal species in Norway
-", presented at the ASM NGS Conference in Washington D.C. September 2018.
+This notebook presents the analysis of whole genome data for the poster "Quinolone resistance mechanisms found in E. coli from four animal species in Norway", presented at the ASM NGS Conference in Washington D.C. September 2018.
 
 Please press the "code" button for each chunk to view code.
 ```{r message=FALSE, warning=FALSE}
@@ -89,15 +88,14 @@ Four isolates were excluded due to bad sequence quality.
 isolate_data <- read.table("../data/isolate_data.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F) %>%
+                           stringsAsFactors = F)
   filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
 
 # Total MIC profile for all isolates in this study
 mic_data <- read.table("../data/mic_data.txt",
                            sep = "\t",
                            header = T,
-                           stringsAsFactors = F) %>%
-  filter(id %not_in% c("2016-02-428-2-S","2016-02-486-2-S","2016-02-732-2-S","2016-17-565-1-S"))
+                           stringsAsFactors = F)
 
 # ARIBA MLST results for each isolate
 mlst_results <- read.table("../data/mlst_results.txt",
@@ -719,7 +717,6 @@ grid.arrange(arrangeGrob(p1 + theme(plot.margin=margin(51,-2,135,0)),
                                     plot.margin = margin(0,0,0,-8)),
                          heights=c(0.98,-0.03)), 
              ncol=2)
-
 ```
 
 # Statistics
