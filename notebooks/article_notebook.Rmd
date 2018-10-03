@@ -1,0 +1,561 @@
+---
+title: "Article data analysis"
+author: "Håkon Kaspersen"
+date: '`r format(Sys.time(), "%d.%m.%Y")`'
+output:
+    html_document:
+      code_folding: hide
+      df_print: paged
+      highlight: kate
+      number_sections: yes
+      theme: flatly
+      toc: yes
+      toc_depth: 3
+      toc_float:
+        collapsed: yes
+    pdf_document:
+      toc: yes
+      toc_depth: '3'
+---
+
+```{r load libraries, message=FALSE, warning=FALSE}
+# Libraries
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr, phangorn, gridExtra, ggtree, htmlTable)
+```
+
+# Import data
+```{r Import data}
+isolate_data <- read.table("../data/isolate_data.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+no_of_reads <- read.table("../data/read_data.txt",
+                          sep = "\t",
+                          header = T,
+                          stringsAsFactors = F)
+
+```
+
+# ARIBA results analysis
+```{r ARIBA analysis}
+megares_report_loc <- "../data/ariba/megares_results"
+resfinder_report_loc <- "../data/ariba/resfinder_results"
+ac_genes <- c("qnr","aac","oqx")
+mut_genes <- c("gyr","par","marR","soxS","tolC","acrR")
+
+# adjust parameters for filtering
+if (length(ac_genes) == 1) {
+  if (grepl("all", ac_genes, ignore.case = TRUE) == TRUE) {
+    ac_genes <- "ALL"
+    } else {
+      ac_genes <- ac_genes
+    }
+}
+
+if (length(mut_genes) == 1) {  
+  if (grepl("all", mut_genes, ignore.case = TRUE) == TRUE) {
+    mut_genes <- "ALL"
+    } else {
+      mut_genes <- mut_genes
+    }
+}
+# -------------------------------------- Libraries
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(ggplot2,dplyr,tidyr,gridExtra,grid,
+               forcats,purrr,stringr,kableExtra,
+               knitr,IRdisplay,reprex,svglite)
+
+# -------------------------------------- Functions
+# Collapses data frame to unique lines while ignoring NA's
+func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
+
+# Confidence interval function
+get_binCI <- function(x, n) as.numeric(setNames(binom.test(x,n)$conf.int*100,
+                                                c("lwr", "upr")))
+
+# Identifies filenames in input folder
+file_names <- function(filepath) {
+  files <- list.files(path = filepath, pattern = "amr_report.tsv")
+  return(files)
+}
+
+# Import ariba data from report.tsv from chosen database used in ariba
+get_ariba_data <- function(filepath) {
+  files <- file_names(filepath)
+  
+  data_list <- lapply(files,
+                      FUN = function(file) {
+                        read.delim(
+                          paste0(filepath, "/", file),
+                          stringsAsFactors = F,
+                          header = TRUE,
+                          sep = "\t"
+                        )
+                      })
+  
+  names(data_list) <- files
+  data <- bind_rows(lapply(data_list, function(x) map(x, as.character)), .id = "ref")
+  return(data)
+}
+
+# Corrects the gene names found in the "cluster" column
+fix_gene_names <- function(df) {
+  genes <- unique(df$ref_name)
+  new_names <- gsub("^(.*?)\\..*", "\\1", genes)
+  new_names <- gsub("_", "", new_names, fixed = T)
+  new_names <- gsub("-", "", new_names, fixed = T)
+  
+  gene_names <- c()
+  for (i in new_names) {
+    p <- paste(tolower(substring(i, 1,3)), substring(i, 4), sep = "", collapse = " ")
+    gene_names <- c(gene_names,p)
+  }
+  df2 <- data.frame(genes,gene_names) %>%
+    mutate(genes = as.character(genes)) %>%
+    rename(ref_name = genes)
+  
+  df <- df %>%
+    left_join(df2, by = "ref_name") %>%
+    mutate(gene_names = as.character(gene_names),
+           ref = gsub("(.*?)_amr_report.tsv", "\\1", ref))
+  
+  return(df)
+}
+
+# Function for selecting genes of interest and filtering the 
+# columns in the data frame on the resulting vector
+select_genes <- function(df, gene_string) {
+  names_df <- names(df)
+  x <- "ref"
+  for (i in names_df) {
+    for (j in gene_string) {
+      if (str_detect(i, regex(j, ignore_case = T)) == TRUE) {
+        x <- c(x, i)
+      }
+    }
+  }
+  df <- df %>%
+    select(one_of(x))
+  return(df)
+}
+
+# Allowed flags from the ARIBA report
+flag_selection <- c("19","27","147","155","403",
+                    "411","915","923","787","795",
+                    "531","539","659","667","787","795")  
+
+# Function that returns info on flag selection
+check_flags <- function(df) {
+  df <- df %>%
+    select(ref, gene_names, flag, ref_ctg_change) %>%
+    mutate(flag_result = flag %in% flag_selection,
+           flag_result = as.integer(flag_result),
+           ref = gsub("(.*?)\\_.+", "\\1", ref),
+           ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
+           ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)) %>%
+    rename("gene" = gene_names)
+  return(df)
+}
+
+# Function that handles megares data and returns a data frame with information on whether a gene
+# is mutated or not. Includes control for QRDR in gyrA.
+create_mut_table <- function(df) {
+  df <- df %>%
+    select(ref, gene_names, flag, ref_ctg_change) %>%
+    filter(flag %in% flag_selection) %>%
+    mutate(id = 1:n()) %>%
+    spread(gene_names, ref_ctg_change) %>%
+    group_by(ref) %>%
+    summarise_all(funs(func_paste)) %>%
+    select(-c(id, flag)) %>%
+    gather(gene, mut, -ref) %>%
+    mutate(mut = ifelse(mut == "" | mut == "." | is.na(mut) == TRUE, 0, mut),
+           result = ifelse(mut != 0, 1, 0),
+           result = as.integer(result),
+           type = "mut")
+  return(df)
+}                    
+
+# Corrects or mutations in QRDR for gyrA, gyrB, parC and parE genes.
+# The function returns columns of 1/0 values for whether or not the 
+# mutations reported by ARIBA is within the QRDR in the gene:
+# gyrA: AA 67 - 106
+# gyrB: AA 333 - 481
+# ParC: AA 51 - 170
+# parE: AA 366 - 523
+# Source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1142146/pdf/cjvr68pg229.pdf
+fix_gyr_par_results <- function(df) {
+  df <- df %>%
+    mutate(gyrA_result = mut %>% # control for mutation within QRDR for gyrA
+             str_extract_all("\\d+") %>% # from reprex package
+             map(as.integer) %>% # converts all to integer
+             map_lgl(~ any(.x >= 67L & .x <= 106L)), # returns TRUE/FALSE whether value is within range or not
+           gyrA_result = if_else(gene != "gyrA", NA, gyrA_result), # filters out results for all other genes
+           gyrA_result = as.integer(gyrA_result),
+           gyrB_result = mut %>% # control for mutation within QRDR for gyrB
+             str_extract_all("\\d+") %>%
+             map(as.integer) %>%
+             map_lgl(~ any(.x >= 333L & .x <= 481L)),
+           gyrB_result = if_else(gene != "gyrB", NA, gyrB_result),
+           gyrB_result = as.integer(gyrB_result),
+           parC_result = mut %>% # control for mutation within QRDR for parC
+             str_extract_all("\\d+") %>% 
+             map(as.integer) %>% 
+             map_lgl(~ any(.x >= 51L & .x <= 170L)),
+           parC_result = if_else(gene != "parC", NA, parC_result),
+           parC_result = as.integer(parC_result),
+           parE_result = mut %>% # control for mutation within QRDR for parE
+             str_extract_all("\\d+") %>% 
+             map(as.integer) %>% 
+             map_lgl(~ any(.x >= 366L & .x <= 523L)),
+           parE_result = if_else(gene != "parE", NA, parE_result),
+           parE_result = as.integer(parE_result)) %>%
+    mutate(result_gyr_par = case_when(gene == "gyrA" ~ gyrA_result,
+                                      gene == "gyrB" ~ gyrB_result,
+                                      gene == "parC" ~ parC_result,
+                                      gene == "parE" ~ parE_result)) %>%
+    mutate(result_total = ifelse(gene %in% c("gyrA","gyrB","parC","parE"), result_gyr_par, result)) %>%
+    select(-c(gyrA_result,
+              gyrB_result,
+              parC_result,
+              parE_result,
+              result_gyr_par,
+              result))
+  return(df)
+}
+
+# Function that handles resfinder data and returns a data frame with 
+# presence/absence for acquired genes                           
+create_acquired_table <- function(df) {
+  df <- df %>%
+    select(ref, gene_names, flag, ref_ctg_change) %>%
+    mutate(id = 1:n()) %>%
+    filter(flag %in% flag_selection) %>%
+    spread(gene_names, ref_ctg_change) %>%
+    group_by(ref) %>%
+    summarise_all(funs(func_paste)) %>%
+    mutate(ref = gsub("^(.*?)_amr_report.tsv$", "\\1", ref)) %>%
+    select(-c(id, flag)) %>%
+    gather(gene, result,-ref) %>%
+    mutate(result_total = ifelse(result == "", 0, 1),
+           result_total = as.character(result_total),
+           type = "gene") %>%
+    select(-result)
+  return(df)
+}
+
+# Function that returns a filtered dataframe based on the string "genes"
+filter_mut_table <- function(df) {
+  report_genes <- unique(df$gene)
+  grep_genes <- c()
+  for (gene in mut_genes) {
+    for (g in report_genes) {
+      if (grepl(gene, g, ignore.case = T) == TRUE) {
+        grep_genes <- c(grep_genes, g)
+      }
+    }
+  }
+  df <- df %>%
+    filter(gene %in% grep_genes) %>%
+    mutate(gene = as.character(gene))
+  return(df)
+}
+
+# Function that returns a filtered dataframe based on the string "acquired_genes"
+filter_acquired_table <- function(df) {
+  report_genes <- unique(df$gene)
+  grep_genes <- c()
+  for (gene in ac_genes) {
+    for (g in report_genes) {
+      if (grepl(gene, g, ignore.case = T) == TRUE) {
+        grep_genes <- c(grep_genes, g)
+      }
+    }
+  }
+  df <- df %>%
+    filter(gene %in% grep_genes) %>%
+    mutate(gene = gsub("_", "", gene),
+           gene = as.character(gene))
+  return(df)
+}
+
+# calculates percentage of present/absent mutations and genes
+calc_stats <- function(df) {
+  df <- df %>%
+    group_by(gene, result_total) %>%
+    count() %>%
+    ungroup() %>%
+    mutate(result_total = if_else(result_total == 1, "Present", "Absent")) %>%
+    spread(result_total, n, fill = 0) %>%
+    rowwise() %>%
+    mutate(Total = Present + Absent,
+           Percent = round(Present/Total*100, 1),
+           lwr = round(get_binCI(Present, Total)[1], 1),
+           upr = round(get_binCI(Present, Total)[2], 1))
+  return(df)
+}
+
+# calculates how many mutations are present in the genes
+# gyrA, gyrB, parC and parE
+calc_no_of_mut <- function(df) {
+  df1 <- df %>%
+    filter(gene %in% c("gyrA","parC","gyrB","parE")) %>%
+    mutate(entries = sapply(strsplit(.$mut, ","), FUN = function(x) {length(x)})) %>%
+    separate(mut, into = as.character(c(1:max(.$entries)))) %>%
+    select(-entries) %>%
+    gather(id, mut, -c(ref, gene, result, type))
+  
+  df2 <- fix_gyr_par_results(df1)
+  
+  df3 <- df2 %>%
+    mutate(test = ifelse(mut != "0" & result_total == 0, 0, 1)) %>%
+    filter(test == 1) %>%
+    spread(gene, mut) %>%
+    group_by(ref) %>%
+    summarise_all(funs(func_paste)) %>%
+    mutate_at(.vars = vars(c("gyrA","gyrB","parC","parE")),
+              .funs = function(x) ifelse(x == "0", "", x)) %>%
+    mutate(mut_gyrA = sapply(strsplit(.$gyrA, ","), FUN = function(x) {length(x)}),
+           mut_gyrB = sapply(strsplit(.$gyrB, ","), FUN = function(x) {length(x)}),
+           mut_parC = sapply(strsplit(.$parC, ","), FUN = function(x) {length(x)}),
+           mut_parE = sapply(strsplit(.$parE, ","), FUN = function(x) {length(x)})) %>%
+    select(-c(type, id, result_total, test)) %>%
+    mutate_at(.vars = vars(c("gyrA","gyrB","parC","parE")),
+              .funs = function(x) ifelse(x == "", "0", x))
+  return(df3)
+}
+
+# creates a data frame with one row per sample, and 1/0 results 
+# for mutations in respective genes in columns
+create_mut_report <- function(df) {
+  df <- df %>%
+    select(-mut) %>%
+    group_by(ref) %>%
+    mutate(id = 1:n()) %>%
+    spread(gene, result_total) %>%
+    summarise_all(funs(func_paste)) %>%
+    select(-c(id, type))
+  return(df)
+}
+
+# creates a data frame with one row per sample, and 1/0 results
+# for acquired genes in columns
+create_acquired_report <- function(df) {
+  df <- df %>%
+    group_by(ref) %>%
+    mutate(id = 1:n()) %>%
+    spread(gene, result_total) %>%
+    summarise_all(funs(func_paste)) %>%
+    select(-c(id, type))
+  return(df)
+}
+
+# prepares data frame for number of mutations heatmap
+create_heatmap_df <- function(df) {
+  qnr <- names(df)
+  
+  qnr_cols <- c()
+  
+  for (i in qnr) {
+    if (grepl("qnr", i, ignore.case = TRUE) == TRUE) {
+      qnr_cols <- c(qnr_cols, i)
+    }
+  }
+  
+  qnr_df <- df %>%
+    select_at(vars(ref, qnr_cols)) %>%
+    gather(gene, result, -ref) %>%
+    mutate(type = "Gene")
+  
+  qnr_mut_quant <- mut_quant %>%
+    select(-c("gyrA","gyrB","parC","parE")) %>%
+    mutate(type = "Mut") %>%
+    gather(gene, result, -c(ref, type)) %>%
+    mutate(gene = case_when(gene == "mut_gyrA" ~ "gyrA",
+                            gene == "mut_gyrB" ~ "gyrB",
+                            gene == "mut_parC" ~ "parC",
+                            gene == "mut_parE" ~ "parE",
+                            TRUE ~ gene)) %>%
+    rbind(., qnr_df)
+  return(qnr_mut_quant)
+}
+
+# -------------------------------------- Analysis
+# Import data
+mut_data <- get_ariba_data(megares_report_loc)
+acquired_data <- get_ariba_data(resfinder_report_loc)
+
+# Clean data
+clean_mut_data <- fix_gene_names(mut_data)
+clean_acquired_data <- fix_gene_names(acquired_data)
+
+# Check flags
+mut_flags <- check_flags(clean_mut_data)
+acquired_flags <- check_flags(clean_acquired_data)
+
+# Wrangle
+mut_table <- create_mut_table(clean_mut_data)
+mut_table_fixed <- fix_gyr_par_results(mut_table)
+mut_filtered <- filter_mut_table(mut_table_fixed)
+acquired_table <- create_acquired_table(clean_acquired_data)
+acquired_filtered <- filter_acquired_table(acquired_table)
+
+# Stats
+if (length(mut_genes) == 1) {
+  if (mut_genes == "ALL") {
+    mut_stats <- calc_stats(mut_table_fixed)
+    mut_report <- create_mut_report(mut_table_fixed)
+    }
+} else {
+  mut_stats <- calc_stats(mut_filtered)
+  mut_report <- create_mut_report(mut_filtered)
+}
+
+if (length(ac_genes) == 1) {
+  if (ac_genes == "ALL") {
+    acquired_stats <- calc_stats(acquired_table)
+    acquired_report <- create_acquired_report(acquired_table)
+  }
+} else {
+  acquired_stats <- calc_stats(acquired_filtered)
+  acquired_report <- create_acquired_report(acquired_filtered)
+}
+
+mut_quant <- suppressWarnings(calc_no_of_mut(mut_table))
+heatmap_df <- create_heatmap_df(acquired_report)
+
+# ---------------------------------- Tables
+
+# number of mutations table
+mut_no <- mut_quant %>%
+  group_by(mut_gyrA, mut_gyrB, mut_parC, mut_parE) %>%
+  count()
+
+# number of isolates per mutation combination
+mut_comb <- mut_quant %>%
+  group_by(gyrA, gyrB, parC, parE) %>%
+  count()
+```
+
+# Tables
+## Isolate data
+```{r}
+isolate_data_complete <- isolate_data %>%
+  left_join(no_of_reads, by = "id")
+
+isolate_data_complete
+```
+
+
+## List of genes of interest
+```{r}
+
+acquired_ref_names <- acquired_data$ref_name
+acquired_ref <- c()
+
+for (i in ac_genes) {
+  for (j in acquired_ref_names) {
+    if (grepl(i,j, ignore.case = T) == TRUE) {
+      acquired_ref <- c(acquired_ref, j)
+    }
+  }
+}
+
+acquired_ref <- unique(acquired_ref)
+
+acquired_ref_genes <- acquired_data %>%
+  mutate(test = duplicated(ref_name),
+         gene = case_when(grepl("qnra1", ref_name, ignore.case = T) == TRUE ~ "qnrA1",
+                          grepl("qnrb19", ref_name, ignore.case = T) == TRUE ~ "qnrB19",
+                          grepl("qnrb6", ref_name, ignore.case = T) == TRUE ~ "qnrB6",
+                          grepl("qnrb60", ref_name, ignore.case = T) == TRUE ~ "qnrB60",
+                          grepl("qnrs1", ref_name, ignore.case = T) == TRUE ~ "qnrS1",
+                          grepl("qnrs2", ref_name, ignore.case = T) == TRUE ~ "qnrS2",
+                          grepl("qnrs4", ref_name, ignore.case = T) == TRUE ~ "qnrs4",
+                          grepl("qnrs9", ref_name, ignore.case = T) == TRUE ~ "qnrS9")) %>%
+  filter(test == FALSE,
+         ref_name %in% acquired_ref_names) %>%
+  select(ref_name, gene) %>%
+  mutate(compl = complete.cases(.)) %>%
+  filter(compl == TRUE) %>%
+  mutate(ref_name2 = sub(".+_(.*?)", "\\1", ref_name)) %>%
+  group_by(gene) %>%
+  summarise_all(funs(func_paste)) %>%
+  select(gene, ref_name2) %>%
+  rename("Accession number(s)" = ref_name2,
+         "Gene" = gene) %>%
+  mutate(Description = "Quinolone resistance protein, plasmid mediated, decreases susceptibility of quinolones",
+         Type = "Acquired")
+  
+df_ref_names <- mut_data$cluster
+ref_names <- c()
+
+for (i in mut_genes) {
+  for (j in df_ref_names) {
+    if (grepl(i,j, ignore.case = T) == TRUE) {
+      ref_names <- c(ref_names, j)
+    }
+  }
+}
+
+ref_names <- unique(ref_names)
+
+intrinsic_ref_genes <- mut_data %>%
+  mutate(test = duplicated(cluster),
+         gene = case_when(grepl("gyra", cluster, ignore.case = T) == TRUE ~ "gyrA",
+                          grepl("gyrb", cluster, ignore.case = T) == TRUE ~ "gyrB",
+                          grepl("parc", cluster, ignore.case = T) == TRUE ~ "parC",
+                          grepl("pare", cluster, ignore.case = T) == TRUE ~ "parE",
+                          grepl("soxs", cluster, ignore.case = T) == TRUE ~ "soxS",
+                          grepl("marR", cluster, ignore.case = T) == TRUE ~ "marR",
+                          grepl("tolc", cluster, ignore.case = T) == TRUE ~ "tolC",
+                          grepl("acrr", ref_name, ignore.case = T) == TRUE ~ "acrR")) %>%
+  filter(test == FALSE,
+         cluster %in% ref_names) %>%
+  select(ref_name, gene, free_text) %>%
+  mutate(ref_name2 = sub("^.*?_([A-Z]+[0-9_.]*[0-9]).*", "\\1", ref_name)) %>%
+  select(-ref_name) %>%
+  group_by(gene) %>%
+  summarise_all(funs(func_paste)) %>%
+  select(gene, ref_name2) %>%
+  rename("Accession number(s)" = ref_name2,
+         "Gene" = gene) %>%
+  mutate(Description = case_when(Gene == "acrR" ~ "Multidrug efflux regulator, represses the transcription of acrB.",
+                                 Gene == "gyrA" ~ "DNA gyrase subunit A, regulates DNA topoplogy. Target for quinolones.",
+                                 Gene == "gyrB" ~ "DNA gyrase subunit B, regulates DNA topoplogy. Target for quinolones.",
+                                 Gene == "marR" ~ "Repressor of the marRAB operon, involved with the activation of resistance- and oxidative stress genes.",
+                                 Gene == "parC" ~ "Topoisomerase IV subunit C, regulates DNA topology. Target for quinolones.",
+                                 Gene == "parE" ~ "Topoisomerase IV subunit E, regulates DNA topology. Target for quinolones.",
+                                 Gene == "soxS" ~ "Transcriptional activator of the superoxide response regulon.",
+                                 Gene == "tolC" ~ "Part of the major AcrAB-TolC multidrug efflux pump."),
+         Type = "Intrinsic gene")
+                
+
+
+ref_genes <- rbind(intrinsic_ref_genes, acquired_ref_genes)
+
+ref_genes
+
+```
+
+
+
+```{r}
+per_species <- isolate_data %>%
+  group_by(species) %>%
+  count()
+
+per_species
+```
+
+
+
+
+
+
+
+
+
