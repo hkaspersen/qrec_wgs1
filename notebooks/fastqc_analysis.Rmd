@@ -163,7 +163,7 @@ df_list <- get_fastqc_data(input_dir)
 ## Adapter content
 This plot presents the adapter content for all sequences in each group. Each adapter type is specified by color. The X-axis represents the read positions, where the left side represents the start of the read and the right side the end.
 
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$adapter_content %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -197,12 +197,13 @@ df_list$adapter_content %>%
       legend.position = "bottom"
     ) +
     # creates separate windows for each group
-    facet_wrap(~ group, scales = "free", dir = "v")
+    facet_wrap(~ group, scales = "free_x", dir = "v")
+
 ```
 
 ## Per base sequence content
 This plot presents the per base sequence content for all reads in each group. Each base is represented by color. 
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$per_base_sequence_content %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -227,13 +228,13 @@ df_list$per_base_sequence_content %>%
       legend.position = "bottom"
     ) +
     # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free", dir = "v")
+    facet_wrap( ~ group, scales = "free_x", dir = "v")
 ```
 
 ## Sequence duplication levels
 This plot presents the duplication levels for all reads in each group. The X-axis contain "bins" of different duplication levels, and the number is a representation of how many of the same read is present. For example, the bin "3" represents the reads that have triplicates in the file.
 
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$sequence_duplication_levels %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -264,13 +265,13 @@ df_list$sequence_duplication_levels %>%
             vjust = 0.4
           )) +
     # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free")
+    facet_wrap( ~ group, scales = "free_x")
 ```
 
 ## Sequence quality scores
 This plot presents the sequence quality scores for all reads in each group. The X-axis represent the phred-score for each read, and the y-axis represent the amount of reads per phred-score. Higher score is better.
 
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$per_sequence_quality_scores %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -293,7 +294,7 @@ df_list$per_sequence_quality_scores %>%
 
 ## Per sequence GC-content
 This plot presents the % GC-content for all reads in each group.
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$per_sequence_gc_content %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -310,12 +311,12 @@ df_list$per_sequence_gc_content %>%
     ))) +
     theme_classic() +
     # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free")
+    facet_wrap( ~ group, scales = "free_x")
 ```
 
 ## Per base N-content
 This plot presents the per base N content for all reads in each group. N's are added to the read instead of a base if the sequencer is unable to do the base call with sufficient confidence. As before, the X-axis represents the position in the read, where left is the start of the read and right is the end.
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$per_base_n_content %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -333,12 +334,12 @@ df_list$per_base_n_content %>%
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank()) +
     # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free", dir = "v")
+    facet_wrap( ~ group, scales = "free_x", dir = "v")
 ```
 
 ## Total deduplicated percentage
 This plot presents the total deduplicated percentage for all reads in each group.
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$total_deduplicated_percentage %>%
     gather(key = "ref", value = `1`) %>%
     # import information from another data frame from same list,
@@ -359,7 +360,7 @@ df_list$total_deduplicated_percentage %>%
 
 ## Per base sequence quality
 This plot presents the per base mean sequence quality for all reads in each group. The green line depicts the "good quality" limit of the phred-score 28. As before, the X-axis represents the position in each read.
-```{r}
+```{r, fig.height=8, fig.width=12}
 df_list$per_base_sequence_quality %>%
     # import information from another data frame from same list,
     # to get grouping information etc.
@@ -385,6 +386,6 @@ df_list$per_base_sequence_quality %>%
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank()) +
     # creates separate windows for each group
-    facet_wrap(~ group, scales = "free", dir = "v")
+    facet_wrap(~ group, scales = "free_x", dir = "v")
 ```
 
