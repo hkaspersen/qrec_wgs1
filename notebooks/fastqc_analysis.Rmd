@@ -165,70 +165,77 @@ This plot presents the adapter content for all sequences in each group. Each ada
 
 ```{r, fig.height=8, fig.width=12}
 df_list$adapter_content %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    # get data ready for boxplot by gathering the columns into two columns
-    gather(key,
-           value, -c(ref,
-                     Position,
-                     group,
-                     seqlen)) %>%
-    # plotting
-    ggplot(aes(factor(
-      Position,
-      levels = unique(Position),
-      ordered = TRUE
-    ), value, color = key)) +
-    geom_boxplot(outlier.size = 0.5) +
-    labs(
-      x = "Position in Read",
-      y = "Percent (%) Adapter Content",
-      color = NULL,
-      title = "Adapter content"
-    ) +
-    scale_colour_jama() +
-    scale_y_continuous(limits = c(0, 20)) +
-    theme_classic() +
-    theme(
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      legend.position = "bottom"
-    ) +
-    # creates separate windows for each group
-    facet_wrap(~ group, scales = "free_x", dir = "v")
-
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  # get data ready for boxplot by gathering the columns into two columns
+  gather(key,
+  value,-c(ref,
+  Position,
+  group,
+  seqlen)) %>%
+  # plotting
+  ggplot(aes(factor(
+  Position,
+  levels = unique(Position),
+  ordered = TRUE
+  ), value, color = key)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(
+  x = "Position in Read",
+  y = "Percent (%) Adapter Content",
+  color = NULL,
+  title = "Adapter content"
+  ) +
+  scale_colour_jama() +
+  scale_y_continuous(limits = c(0, 20)) +
+  theme_classic() +
+  theme(
+  axis.text.x = element_blank(),
+  axis.title = element_text(size = 14),
+  axis.ticks.x = element_blank(),
+  strip.text = element_text(size = 14),
+  axis.text.y = element_text(size = 12),
+  legend.text = element_text(size = 12),
+  legend.position = "bottom"
+  ) +
+  # creates separate windows for each group
+  facet_wrap( ~ group, scales = "free_x", dir = "v")
 ```
 
 ## Per base sequence content
 This plot presents the per base sequence content for all reads in each group. Each base is represented by color. 
 ```{r, fig.height=8, fig.width=12}
 df_list$per_base_sequence_content %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    gather(key, value, -c(ref, Base, group, seqlen)) %>%
-    ggplot(aes(factor(
-      Base, levels = unique(Base), ordered = TRUE
-    ), value, color = key)) +
-    geom_boxplot(outlier.size = 0.5) +
-    labs(
-      x = "Position in Read",
-      y = "Percent (%)",
-      color = NULL,
-      title = "Per base sequence content"
-    ) +
-    theme_classic() +
-    scale_color_jama() +
-    theme(
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      legend.position = "bottom"
-    ) +
-    # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free_x", dir = "v")
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  gather(key, value,-c(ref, Base, group, seqlen)) %>%
+  ggplot(aes(factor(
+  Base, levels = unique(Base), ordered = TRUE
+  ), value, color = key)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(
+  x = "Position in Read",
+  y = "Percent (%)",
+  color = NULL,
+  title = "Per base sequence content"
+  ) +
+  theme_classic() +
+  scale_color_jama() +
+  theme(
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14),
+  axis.text.y = element_text(size = 12),
+  legend.text = element_text(size = 12),
+  legend.position = "bottom"
+  ) +
+  # creates separate windows for each group
+  facet_wrap(~ group, scales = "free_x", dir = "v")
 ```
 
 ## Sequence duplication levels
@@ -236,36 +243,44 @@ This plot presents the duplication levels for all reads in each group. The X-axi
 
 ```{r, fig.height=8, fig.width=12}
 df_list$sequence_duplication_levels %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    gather(key, value, -c(ref, `Duplication Level`, group, seqlen)) %>%
-    ggplot(aes(
-      factor(
-        `Duplication Level`,
-        levels = unique(`Duplication Level`),
-        ordered = TRUE
-      ),
-      value,
-      fill = key
-    )) +
-    geom_boxplot(outlier.size = 0.5) +
-    scale_fill_manual(values = c("#ef8a62",
-                                 "#67a9cf")) +
-    theme_classic() +
-    labs(x = "Duplication Level",
-         y = "Percent (%) of Sequences",
-         fill = NULL,
-         title = "Sequence duplication levels") +
-    theme(legend.position = "bottom",
-          axis.text.x = element_text(
-            angle = 90,
-            hjust = 1,
-            vjust = 0.4
-          )) +
-    # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free_x")
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  gather(key, value,-c(ref, `Duplication Level`, group, seqlen)) %>%
+  ggplot(aes(
+  factor(
+  `Duplication Level`,
+  levels = unique(`Duplication Level`),
+  ordered = TRUE
+  ),
+  value,
+  fill = key
+  )) +
+  geom_boxplot(outlier.size = 0.5) +
+  scale_fill_manual(values = c("#ef8a62",
+  "#67a9cf")) +
+  theme_classic() +
+  labs(x = "Duplication Level",
+  y = "Percent (%) of Sequences",
+  fill = NULL,
+  title = "Sequence duplication levels") +
+  theme(
+  axis.ticks.x = element_blank(),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14),
+  axis.text.y = element_text(size = 12),
+  legend.text = element_text(size = 12),
+  legend.position = "bottom",
+  axis.text.x = element_text(
+  size = 12,
+  angle = 90,
+  hjust = 1,
+  vjust = 0.4
+  )
+  ) +
+  # creates separate windows for each group
+  facet_wrap(~ group, scales = "free_x")
 ```
 
 ## Sequence quality scores
@@ -273,119 +288,140 @@ This plot presents the sequence quality scores for all reads in each group. The 
 
 ```{r, fig.height=8, fig.width=12}
 df_list$per_sequence_quality_scores %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    ggplot(aes(factor(Quality), Count, fill = factor(Quality))) +
-    geom_boxplot(outlier.size = 0.5) +
-    scale_y_continuous(labels = comma) +
-    scale_x_discrete(breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40)) +
-    scale_fill_viridis(discrete = TRUE) +
-    labs(x = "Quality",
-         y = "Number of reads",
-         title = "Per sequence quality scores") +
-    guides(fill = FALSE) +
-    theme_classic() +
-    theme(axis.text.x = element_text(size = 10)) +
-    # creates separate windows for each group
-    facet_wrap( ~ group)
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  ggplot(aes(factor(Quality), Count, fill = factor(Quality))) +
+  geom_boxplot(outlier.size = 0.5) +
+  scale_y_continuous(labels = comma) +
+  scale_x_discrete(breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40)) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(x = "Quality",
+  y = "Number of reads",
+  title = "Per sequence quality scores") +
+  guides(fill = FALSE) +
+  theme_classic() +
+  theme(
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14)
+  ) +
+  # creates separate windows for each group
+  facet_wrap(~ group)
 ```
 
 ## Per sequence GC-content
 This plot presents the % GC-content for all reads in each group.
 ```{r, fig.height=8, fig.width=12}
 df_list$per_sequence_gc_content %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    ggplot(aes(factor(`GC Content`), Count)) +
-    geom_boxplot(outlier.size = 0.5) +
-    labs(x = "GC content (%)",
-         y = "Number of reads",
-         title = "Per sequence GC content") +
-    scale_y_continuous(labels = comma) +
-    scale_x_discrete(breaks = as.character(seq(
-      from = 0, to = 100, by = 10
-    ))) +
-    theme_classic() +
-    # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free_x")
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  ggplot(aes(factor(`GC Content`), Count)) +
+  geom_boxplot(outlier.size = 0.5) +
+  labs(x = "GC content (%)",
+  y = "Number of reads",
+  title = "Per sequence GC content") +
+  scale_y_continuous(labels = comma) +
+  scale_x_discrete(breaks = as.character(seq(
+  from = 0, to = 100, by = 10
+  ))) +
+  theme_classic() +
+  theme(
+  axis.text = element_text(size = 12),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14)
+  ) +
+  # creates separate windows for each group
+  facet_wrap(~ group, scales = "free_x")
 ```
 
 ## Per base N-content
 This plot presents the per base N content for all reads in each group. N's are added to the read instead of a base if the sequencer is unable to do the base call with sufficient confidence. As before, the X-axis represents the position in the read, where left is the start of the read and right is the end.
 ```{r, fig.height=8, fig.width=12}
 df_list$per_base_n_content %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    ggplot(aes(factor(
-      Base, levels = unique(Base), ordered = TRUE
-    ), `N-Count`)) +
-    geom_boxplot(fill = "#e6e6e6",
-                 outlier.size = 0.5) +
-    labs(x = "Position in read",
-         title = "Per base N content") +
-    guides(fill = FALSE) +
-    theme_classic() +
-    theme(axis.text.x = element_blank(),
-          axis.ticks.x = element_blank()) +
-    # creates separate windows for each group
-    facet_wrap( ~ group, scales = "free_x", dir = "v")
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  ggplot(aes(factor(
+  Base, levels = unique(Base), ordered = TRUE
+  ), `N-Count`)) +
+  geom_boxplot(fill = "#e6e6e6",
+  outlier.size = 0.5) +
+  labs(x = "Position in read",
+  title = "Per base N content") +
+  guides(fill = FALSE) +
+  theme_classic() +
+  theme(
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14),
+  axis.text.y = element_text(size = 12)
+  ) +
+  # creates separate windows for each group
+  facet_wrap(~ group, scales = "free_x", dir = "v")
 ```
 
 ## Total deduplicated percentage
 This plot presents the total deduplicated percentage for all reads in each group.
 ```{r, fig.height=8, fig.width=12}
 df_list$total_deduplicated_percentage %>%
-    gather(key = "ref", value = `1`) %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length",
-           perc = `1`) %>%
-    mutate(perc = as.numeric(perc)) %>%
-    ggplot(aes(factor(group), perc)) +
-    geom_boxplot(fill = "#e6e6e6",
-                 outlier.size = 0.5) + 
-    scale_y_continuous(limits = c(0, 100)) +
-    labs(x = "Group",
-         y = "Total percentage of deduplicated reads",
-         title = "Total deduplicated percentage") +
-    theme_classic()
+  gather(key = "ref", value = `1`) %>%
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length",
+  perc = `1`) %>%
+  mutate(perc = as.numeric(perc)) %>%
+  ggplot(aes(factor(group), perc)) +
+  geom_boxplot(fill = "#e6e6e6",
+  outlier.size = 0.5) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(x = "Group",
+  y = "Total percentage of deduplicated reads",
+  title = "Total deduplicated percentage") +
+  theme_classic() +
+  theme(axis.text = element_text(size = 12),
+  axis.title = element_text(size = 14))
 ```
 
 ## Per base sequence quality
 This plot presents the per base mean sequence quality for all reads in each group. The green line depicts the "good quality" limit of the phred-score 28. As before, the X-axis represents the position in each read.
 ```{r, fig.height=8, fig.width=12}
 df_list$per_base_sequence_quality %>%
-    # import information from another data frame from same list,
-    # to get grouping information etc.
-    left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
-    rename(seqlen = "Sequence length") %>%
-    mutate(Base = factor(Base,
-                         levels = unique(Base),
-                         ordered = TRUE)) %>%
-    group_by(group) %>%
-    mutate(xmax = length(unique(Base)) + 1) %>%
-    ungroup() %>%
-    ggplot(aes(Base,
-               Mean)) +
-    geom_boxplot(outlier.size = 0.4,
-                 fill = "#7f7f7f") +
-    geom_hline(aes(yintercept = 28),
-               color = "green") +
-    labs(x = "Position in read",
-         y = "Sequence quality",
-         title = "Per base mean sequence quality") +
-    scale_y_continuous(limits = c(0, 42)) +
-    theme_classic() +
-    theme(axis.text.x = element_blank(),
-          axis.ticks.x = element_blank()) +
-    # creates separate windows for each group
-    facet_wrap(~ group, scales = "free_x", dir = "v")
+  # import information from another data frame from same list,
+  # to get grouping information etc.
+  left_join(., df_list$basic_statistics[, c("ref", "Sequence length", "group")], by = "ref") %>%
+  rename(seqlen = "Sequence length") %>%
+  mutate(Base = factor(Base,
+  levels = unique(Base),
+  ordered = TRUE)) %>%
+  group_by(group) %>%
+  mutate(xmax = length(unique(Base)) + 1) %>%
+  ungroup() %>%
+  ggplot(aes(Base,
+  Mean)) +
+  geom_boxplot(outlier.size = 0.4,
+  fill = "#7f7f7f") +
+  geom_hline(aes(yintercept = 28),
+  color = "green") +
+  labs(x = "Position in read",
+  y = "Sequence quality",
+  title = "Per base mean sequence quality") +
+  scale_y_continuous(limits = c(0, 42)) +
+  theme_classic() +
+  theme(
+  axis.text.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  axis.title = element_text(size = 14),
+  strip.text = element_text(size = 14),
+  axis.text.y = element_text(size = 12)
+  ) +
+  # creates separate windows for each group
+  facet_wrap( ~ group, scales = "free_x", dir = "v")
 ```
 
