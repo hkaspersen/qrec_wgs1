@@ -119,13 +119,18 @@ no_of_reads <- read.table("../data/read_data.txt",
                           header = T,
                           stringsAsFactors = F)
 
+mic_data <- read.table("../data/mic_data.txt",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
 ```
 
 ```{r ARIBA analysis, include = FALSE}
 megares_report_loc <- "../data/ariba/megares_results"
 resfinder_report_loc <- "../data/ariba/resfinder_results"
-ac_genes <- c("qnr","aac","oqx")
-mut_genes <- c("gyr","par","marR","soxS","tolC","acrR")
+ac_genes <- c("qnr","oqx")
+mut_genes <- c("gyr","par","marR","soxR","acrR")
 
 # adjust parameters for filtering
 if (length(ac_genes) == 1) {
@@ -465,6 +470,18 @@ create_heatmap_df <- function(df) {
   return(qnr_mut_quant)
 }
 
+# Introduces unique ID's for each sample
+fix_ref_id <- function(df) {
+  df <- df %>%
+    mutate(ref = gsub("(.*?)\\_.+", "\\1", ref),
+         ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
+         ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)) %>%
+    arrange(desc(ref)) %>%
+    mutate(id = id) %>%
+    select(-ref)
+  return(df)
+}
+
 # -------------------------------------- Analysis
 # Import data
 mut_data <- get_ariba_data(megares_report_loc)
@@ -490,23 +507,28 @@ if (length(mut_genes) == 1) {
   if (mut_genes == "ALL") {
     mut_stats <- calc_stats(mut_table_fixed)
     mut_report <- create_mut_report(mut_table_fixed)
+    mut_report_fixed <- fix_ref_id(mut_report)
     }
 } else {
   mut_stats <- calc_stats(mut_filtered)
   mut_report <- create_mut_report(mut_filtered)
+  mut_report_fixed <- fix_ref_id(mut_report)
 }
 
 if (length(ac_genes) == 1) {
   if (ac_genes == "ALL") {
     acquired_stats <- calc_stats(acquired_table)
     acquired_report <- create_acquired_report(acquired_table)
+    acquired_report_fixed <- fix_ref_id(acquired_report)
   }
 } else {
   acquired_stats <- calc_stats(acquired_filtered)
   acquired_report <- create_acquired_report(acquired_filtered)
+  acquired_report_fixed <- fix_ref_id(acquired_report)
 }
 
 mut_quant <- suppressWarnings(calc_no_of_mut(mut_table))
+mut_quant_fixed <- fix_ref_id(mut_quant)
 heatmap_df <- create_heatmap_df(acquired_report)
 
 # ---------------------------------- Tables
@@ -630,6 +652,81 @@ per_species <- isolate_data %>%
 per_species
 ```
 
+## Percent isolates with PMQR and/or QRDR mutations in gyrA, gyrB, parC or parE
+```{r}
+total_report <- mut_report_fixed %>%
+  left_join(acquired_report_fixed, by = "id") %>%
+  gather(gene, value, -id) %>%
+  mutate(present = ifelse(value == 1, gene, NA),
+         ref = 1:n()) %>%
+  spread(gene, value) %>%
+  group_by(id) %>%
+  summarise_all(funs(func_paste)) %>%
+  select(-ref) %>%
+  left_join(mic_data[c("id","CIP")], by = "id") %>%
+  group_by(present,CIP) %>%
+  count() %>%
+  ungroup() %>%
+  rowwise() %>%
+  mutate(present = ifelse(present == "", "None", present),
+         total = 285,
+         percent = round(n/total * 100, 1),
+         lwr = round(get_binCI(n, total)[1], 1),
+         upr = round(get_binCI(n, total)[2], 1))
+
+genes <- c(names(mut_report_fixed), names(acquired_report_fixed))
+genes <- genes[!genes == "id"]
+
+p1 <- ggplot(total_report, aes(reorder(present, as.numeric(-CIP)), percent, fill = factor(CIP)))+
+  geom_col(color = "black")+
+  labs(y = "Percent (%) isolates")+
+  scale_fill_viridis(discrete = TRUE)+
+  guides(fill = FALSE)+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 8),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 8),
+        legend.title = element_blank(),
+        legend.position = "top",
+        legend.spacing.x = unit(0.27, "cm"))
+
+dot_report <- mut_report_fixed %>%
+  left_join(acquired_report_fixed, by = "id") %>%
+  gather(gene, value, -id) %>%
+  mutate(present = ifelse(value == 1, gene, NA),
+         ref = 1:n()) %>%
+  spread(gene, value) %>%
+  group_by(id) %>%
+  summarise_all(funs(func_paste)) %>%
+  left_join(mic_data[c("id","CIP")], by = "id") %>%
+  select(-c(ref, id)) %>%
+  ungroup() %>%
+  mutate_at(vars(-present, CIP), .funs = as.numeric) %>%
+  mutate(none = ifelse(rowSums(.[,genes]) == 0, 1, 0),
+         present = ifelse(present == "", "None", present)) %>%
+  gather(gene, value, -c(present,CIP)) %>%
+  mutate(gene = ifelse(value == 0 & gene != "None", NA, gene),
+         value = ifelse(gene == "None" & value == 0, NA, value)) %>%
+  na.omit()
+
+  
+p2 <- ggplot(dot_report, aes(reorder(present, -CIP), gene, fill = gene))+
+  geom_point(size = 2, pch = 21)+
+  scale_fill_viridis(option = "B",
+                     discrete = TRUE)+
+  guides(fill = FALSE)+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_blank(),
+        axis.ticks.x = element_blank())
+
+plot_grid(p1, p2, nrow = 2, align = "v", rel_heights = c(3.5/5, 1.5/5))
+
+```
+
+
 # Figures
 ## Percent QREC isolates with mutations in intrinsic genes
 ```{r}
@@ -667,10 +764,6 @@ mut_report %>%
       width = 0.6,
       position = position_dodge(1)
     ) +
-    scale_x_discrete(limits = c(
-      "gyrA", "gyrB", "parC", "parE",
-      "marR", "soxS", "tolC"
-    )) +
     scale_fill_brewer(palette = "Paired") +
     labs(y = "Percent (%) of isolates") +
     guides(fill = FALSE) +
