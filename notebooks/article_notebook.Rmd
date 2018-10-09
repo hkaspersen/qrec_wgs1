@@ -652,6 +652,109 @@ per_species <- isolate_data %>%
 per_species
 ```
 
+## Percent isolates with PMQR
+```{r}
+acquired_report_fixed %>%
+  select(-id) %>%
+  mutate_all(funs(as.numeric(.))) %>%
+  mutate(total = rowSums(.),
+         result = if_else(total != 0, 1, 0)) %>%
+  group_by(result) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(result = if_else(result == 0, "Absent", "Present")) %>%
+  spread(result, n) %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr))
+```
+
+## Percent isolates with specific qnr genes
+```{r}
+acquired_report_fixed %>%
+  select(-id) %>%
+  t() %>%
+  as.data.frame(.) %>%
+  mutate(Gene = rownames(.)) %>%
+  mutate_at(vars(-Gene),
+            funs(as.numeric(as.character(.)))) %>%
+  mutate(Present = rowSums(.[,-286])) %>%
+  select(c(Gene, Present)) %>%
+  rowwise() %>%
+  mutate(Total = 285,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr, Total))
+
+```
+
+## Percent isolates with mutations in QRDR
+```{r}
+mut_report_fixed %>%
+  select(-c(id, marR)) %>%
+  group_by_all() %>%
+  count() %>%
+  ungroup() %>%
+  mutate_at(vars(c(gyrA, gyrB, parC, parE)),
+            .funs = funs(as.numeric)) %>%
+  mutate(type = ifelse(rowSums(.[,1:4]) == 0, 1, 0)) %>%
+  select(n, type) %>%
+  group_by(type) %>%
+  summarise_all(funs(sum)) %>%
+  mutate(type = ifelse(type == 0, "Present", "Absent")) %>%
+  spread(type, n) %>%
+  mutate(Total = Present + Absent,
+         Percent = round(Present/Total * 100,2),
+         lwr = round(get_binCI(Present, Total)[1], 2),
+         upr = round(get_binCI(Present, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr, Total))
+```
+
+## Percent of isolates with specific mutation combinations in QRDR
+```{r}
+mut_quant_fixed %>%
+  group_by(gyrA, gyrB, parC, parE) %>%
+  count() %>%
+  rowwise() %>%
+  mutate(Total = 285,
+         Percent = round(n/Total * 100,2),
+         lwr = round(get_binCI(n, Total)[1], 2),
+         upr = round(get_binCI(n, Total)[2], 2),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr, Total))
+```
+
+## Total combinations
+```{r}
+acquired_report_fixed %>%
+  left_join(mut_quant_fixed[c("gyrA","gyrB","parC","parE","id")], by = "id") %>%
+  left_join(mut_report_fixed[c("marR","id")], by = "id") %>%
+  left_join(mic_data[c("id","CIP","NAL")], by = "id") %>%
+  select(-id) %>%
+  group_by_at(vars(-c(CIP, NAL))) %>%
+  summarise(CIP = ifelse(min(as.numeric(CIP)) == max(as.numeric(CIP)),
+                         as.character(median(as.numeric(CIP))),
+                         paste(min(as.numeric(CIP)), max(as.numeric(CIP)), sep = " - ")),
+            NAL = ifelse(min(as.numeric(NAL)) == max(as.numeric(NAL)),
+                         as.character(median(as.numeric(NAL))),
+                         paste(min(as.numeric(NAL)), max(as.numeric(NAL)), sep = " - ")),
+            n = n()) %>%
+  rowwise() %>%
+  mutate(Total = 285,
+         Percent = round(n/Total * 100,1),
+         lwr = round(get_binCI(n, Total)[1], 1),
+         upr = round(get_binCI(n, Total)[2], 1),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr, Total))
+```
+
+# Figures
 ## Percent isolates with PMQR and/or QRDR mutations in gyrA, gyrB, parC or parE
 ```{r}
 total_report <- mut_report_fixed %>%
@@ -726,8 +829,6 @@ plot_grid(p1, p2, nrow = 2, align = "v", rel_heights = c(3.5/5, 1.5/5))
 
 ```
 
-
-# Figures
 ## Percent QREC isolates with mutations in intrinsic genes
 ```{r}
 gene_names <- names(mut_report)
