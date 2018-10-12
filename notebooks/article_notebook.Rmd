@@ -32,98 +32,130 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(dplyr, ggplot2, tidyr, cowplot, viridis, forcats, radiant.data, purrr, phangorn, gridExtra, ggtree, htmlTable)
 ```
 
-
-```{r, include=FALSE}
-id <- c("2017-01-3941-1-S", "2016-17-98-1-S", "2016-17-610-1-S", "2016-17-604-1-S", 
-"2016-17-565-1-S", "2016-17-550-1-S", "2016-17-548-1-S", "2016-17-546-1-S", 
-"2016-17-485-1-S", "2016-17-469-1-S", "2016-17-423-1-S", "2016-17-412-1-S", 
-"2016-17-408-1-T", "2016-17-408-1-S", "2016-17-393-1-S", "2016-17-391-1-S", 
-"2016-17-388-1-T", "2016-17-388-1-S", "2016-17-377-1-S", "2016-17-363-1-S", 
-"2016-17-352-1-S", "2016-17-343-1-S", "2016-17-340-1-S", "2016-17-336-1-S", 
-"2016-17-329-1-S", "2016-17-299-1-S", "2016-17-298-1-S", "2016-17-294-1-S", 
-"2016-17-292-1-S", "2016-17-288-1-S", "2016-17-281-1-T", "2016-17-281-1-S", 
-"2016-17-275-1-S", "2016-17-271-1-S", "2016-17-27-1-S", "2016-17-264-1-S", 
-"2016-17-263-1-S", "2016-17-257-1-S", "2016-17-256-1-S", "2016-17-242-1-S", 
-"2016-17-225-1-S", "2016-17-224-1-S", "2016-17-189-1-T", "2016-17-183-1-S", 
-"2016-17-174-1-T", "2016-17-174-1-S", "2016-17-164-1-S", "2016-17-16-1-S", 
-"2016-17-148-1-S", "2016-17-124-1-S", "2016-17-114-1-S", "2016-17-105-1-T", 
-"2016-17-1-1-S", "2016-02-785-2-S", "2016-02-783-2-T", "2016-02-771-2-S", 
-"2016-02-770-2-S", "2016-02-741-2-S", "2016-02-739-2-S", "2016-02-732-2-S", 
-"2016-02-727-2-S", "2016-02-726-2-S", "2016-02-725-2-S", "2016-02-723-2-S", 
-"2016-02-697-2-S", "2016-02-693-2-T", "2016-02-693-2-S", "2016-02-692-2-S", 
-"2016-02-690-2-T", "2016-02-690-2-S", "2016-02-620-2-S", "2016-02-563-2-S", 
-"2016-02-546-2-S", "2016-02-543-2-S", "2016-02-531-2-S", "2016-02-522-2-S", 
-"2016-02-515-2-T", "2016-02-515-2-S", "2016-02-514-2-S", "2016-02-513-2-T", 
-"2016-02-513-2-S", "2016-02-505-2-S", "2016-02-492-2-S", "2016-02-490-2-S", 
-"2016-02-486-2-S", "2016-02-447-2-S", "2016-02-446-2-S", "2016-02-428-2-S", 
-"2016-02-425-2-S", "2016-02-419-2-S", "2016-02-418-2-S", "2016-02-415-2-S", 
-"2016-02-413-2-T", "2016-02-413-2-S", "2016-02-411-2-S", "2016-02-410-2-S", 
-"2016-02-409-2-S", "2016-02-408-2-S", "2016-02-402-2-S", "2016-02-381-2-S", 
-"2016-02-369-2-S", "2016-02-366-2-S", "2016-02-363-2-S", "2016-02-359-2-S", 
-"2016-02-358-2-S", "2016-02-356-2-S", "2016-02-353-2-S", "2016-02-352-2-S", 
-"2016-02-351-2-S", "2016-02-348-2-S", "2016-02-345-2-T", "2016-02-345-2-S", 
-"2016-02-343-2-S", "2016-02-336-2-S", "2016-02-330-2-S", "2016-02-329-2-S", 
-"2016-02-324-2-S", "2016-02-316-2-S", "2016-02-302-2-S", "2016-02-293-2-S", 
-"2016-02-281-2-S", "2016-02-278-2-S", "2016-01-3763-1-T", "2016-01-3474-1-T", 
-"2015-01-753-1-S", "2015-01-752-1-S", "2015-01-751-1-S", "2015-01-750-1-S", 
-"2015-01-749-1-S", "2015-01-5263-1-S", "2015-01-5262-1-S", "2015-01-5177-1-S", 
-"2015-01-5141-1-S", "2015-01-5140-1-S", "2015-01-5138-1-S", "2015-01-5022-1-S", 
-"2015-01-5020-1-S", "2015-01-5018-1-S", "2015-01-4988-1-S", "2015-01-4934-1-S", 
-"2015-01-4932-1-S", "2015-01-4931-1-S", "2015-01-4794-1-S", "2015-01-4788-1-S", 
-"2015-01-4742-1-S", "2015-01-467-1-S", "2015-01-466-1-S", "2015-01-463-1-S", 
-"2015-01-4559-1-S", "2015-01-4558-1-S", "2015-01-4465-1-S", "2015-01-4463-1-S", 
-"2015-01-4462-1-S", "2015-01-4421-1-S", "2015-01-4249-1-S", "2015-01-4037-1-S", 
-"2015-01-3915-1-S", "2015-01-3914-1-S", "2015-01-3911-1-S", "2015-01-3887-1-S", 
-"2015-01-3640-1-S", "2015-01-3639-1-S", "2015-01-3638-1-S", "2015-01-3548-1-S", 
-"2015-01-3545-1-S", "2015-01-3318-1-S", "2015-01-3317-1-S", "2015-01-3102-1-S", 
-"2015-01-3004-1-S", "2015-01-3001-1-S", "2015-01-2879-1-S", "2015-01-2878-1-S", 
-"2015-01-2839-1-S", "2015-01-2838-1-S", "2015-01-2837-1-S", "2015-01-2836-1-S", 
-"2015-01-2835-1-S", "2015-01-2771-1-S", "2015-01-2430-1-S", "2015-01-2429-1-S", 
-"2015-01-2426-1-S", "2015-01-2404-1-S", "2015-01-2403-1-S", "2015-01-2309-1-S", 
-"2015-01-2166-1-S", "2015-01-2097-1-S", "2015-01-2094-1-S", "2015-01-1955-1-S", 
-"2015-01-1954-1-S", "2015-01-1952-1-T", "2015-01-1951-1-S", "2015-01-1950-1-S", 
-"2015-01-1949-1-S", "2015-01-1826-1-S", "2015-01-1823-1-S", "2015-01-1661-1-S", 
-"2015-01-1566-1-S", "2015-01-1343-1-S", "2014-01-861-1-S", "2014-01-860-1-S", 
-"2014-01-856-1-S", "2014-01-7584-1-S", "2014-01-7543-1-S", "2014-01-7512-1-S", 
-"2014-01-7490-1-S", "2014-01-7479-1-S", "2014-01-7443-1-S", "2014-01-7442-1-S", 
-"2014-01-7394-1-S", "2014-01-7375-1-S", "2014-01-7234-1-S", "2014-01-7207-1-S", 
-"2014-01-7136-1-S", "2014-01-7133-1-S", "2014-01-7050-1-S", "2014-01-6926-1-S", 
-"2014-01-6924-1-S", "2014-01-6710-1-S", "2014-01-6625-1-S", "2014-01-6530-1-S", 
-"2014-01-6291-1-S", "2014-01-6123-1-S", "2014-01-6122-1-S", "2014-01-6044-1-S", 
-"2014-01-6043-1-S", "2014-01-6041-1-S", "2014-01-6040-1-S", "2014-01-5917-1-T", 
-"2014-01-5917-1-S", "2014-01-5916-1-S", "2014-01-5915-1-S", "2014-01-5912-1-S", 
-"2014-01-5792-1-S", "2014-01-5565-1-S", "2014-01-4922-1-T", "2014-01-4921-1-S", 
-"2014-01-4651-1-S", "2014-01-4539-1-S", "2014-01-4271-1-S", "2014-01-4270-1-S", 
-"2014-01-3802-1-S", "2014-01-3677-1-S", "2014-01-3676-1-S", "2014-01-3212-1-S", 
-"2014-01-2996-1-S", "2014-01-2995-1-S", "2014-01-2992-1-S", "2014-01-2773-1-S", 
-"2014-01-2728-1-S", "2014-01-2516-1-S", "2014-01-2366-1-S", "2014-01-2362-1-T", 
-"2014-01-2145-1-S", "2014-01-2144-1-S", "2014-01-2071-1-S", "2014-01-2070-1-S", 
-"2014-01-2069-1-S", "2014-01-1742-1-S", "2014-01-1741-1-S", "2014-01-1649-1-S", 
-"2014-01-1268-1-T", "2014-01-1182-1-S", "2013-01-2024-1-T", "2012-01-838-6-T", 
-"2011-01-9386-3-T", "2011-01-6927-5-T", "2011-01-3460-5-T", "2011-01-1544-2-T", 
-"2010-01-991-7-T", "2009-01-551-1-T", "2009-01-4672-5-T", "2009-01-4618-2-T", 
-"2009-01-4415-4-T", "2009-01-413-1-T", "2009-01-4064-1-T", "2009-01-3815-1-T", 
-"2009-01-3064-2-T", "2009-01-2696-4-T", "2009-01-2521-3-T", "2009-01-175-4-T", 
-"2009-01-175-2-T", "2009-01-1690-1-T", "2007-01-361-1-T", "2006-01-2821-1-T", 
-"2006-01-2184-1-T")
-```
-
 ```{r Import data, include = FALSE}
+
+# Collapses data frame to unique lines while ignoring NA's
+func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
+
+id_data <- read.table("../data/id.txt",
+                      sep = "\t",
+                      header = TRUE,
+                      stringsAsFactors = F)
+
 isolate_data <- read.table("../data/isolate_data.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F)
 
-no_of_reads <- read.table("../data/read_data.txt",
+two_reads <- read.table("../data/no_of_reads.txt",
                           sep = "\t",
-                          header = T,
-                          stringsAsFactors = F)
+                          header = F,
+                          stringsAsFactors = F) %>%
+  rename("ref" = V1,
+         "reads" = V2) %>%
+  mutate(ref = gsub(".+/(.*?)\\.fastq\\.gz", "\\1", ref),
+         type = ifelse(grepl("R1", ref) == TRUE, "R1", "R2")) %>%
+  mutate(ref = gsub("(.*?)_L00[0-9]_R[1-2]_00[0-9]","\\1", ref)) %>%
+  group_by(ref) %>%
+  mutate(id = n()) %>%
+  {. ->> four_reads} %>%
+  filter(id == 2) %>%
+  spread(type, reads) %>%
+  rename("R1-1" = R1,
+         "R2-1" = R2) %>%
+  mutate("R1-2" = NA,
+         "R2-2" = NA) %>%
+  select(-id) %>%
+  mutate_all(funs(as.character(.)))
+
+four_reads <- four_reads %>%
+  filter(id == 4) %>%
+  group_by(ref) %>%
+  mutate(id = 1:n()) %>%
+  spread(id, reads) %>%
+  summarise_all(funs(func_paste)) %>%
+  rename("R1-1" = `1`,
+         "R2-1" = `2`,
+         "R1-2" = `3`,
+         "R2-2" = `4`) %>%
+  select(-type) %>%
+  mutate_all(funs(as.character(.)))
+
+no_of_reads <- as.data.frame(rbind(as.matrix(two_reads), as.matrix(four_reads))) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
 
 mic_data <- read.table("../data/mic_data.txt",
                            sep = "\t",
                            header = T,
                            stringsAsFactors = F)
 
+mlst_hf150bp <- read.table("../data/mlst/hiseq_flex_150bp_mlst_summarized_results.tsv",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+mlst_hx125bp <- read.table("../data/mlst/hiseq_xt_125bp_mlst_summarized_results.tsv",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+mlst_hrx250bp <- read.table("../data/mlst/hiseqr_xt_250bp_mlst_summarized_results.tsv",
+                           sep = "\t",
+                           header = T,
+                           stringsAsFactors = F)
+
+mlst_data <- rbind(mlst_hf150bp, mlst_hx125bp, mlst_hrx250bp) %>%
+  separate(ST.adk.fumC.gyrB.icd.mdh.purA.recA,
+           into = c("x","ST","adk","fumC","gyrB","icd","mdh","purA","recA"),
+           sep = " ") %>%
+  select(-x) %>%
+  rename("ref" = header) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
+```
+
+
+# Sequence data
+## Distribution of number of reads per sequencer
+```{r}
+sequence_data <- no_of_reads %>%
+  left_join(isolate_data, by = "id") %>%
+  mutate_at(vars(`R1-1`,`R2-1`,`R1-2`,`R2-2`),
+            funs(as.numeric(as.character(.))))
+
+ggplot(sequence_data, aes(as.numeric(`R1-1`)))+
+  geom_density(aes(fill = sequencer,
+                   y = ..scaled..),
+               alpha = 0.4)+
+  labs(x = "Number of reads",
+       y = "Density",
+       fill = "Sequencer")+
+  theme(legend.position = c(0.7, 0.8))
+```
+
+## Distribution of number of reads per library prep type
+```{r}
+ggplot(sequence_data, aes(as.numeric(`R1-1`)))+
+  geom_density(aes(fill = libprep,
+                   y = ..scaled..),
+               alpha = 0.4)+
+  labs(x = "Number of reads",
+       y = "Density",
+       fill = "Library prep kit")+
+  theme(legend.position = c(0.7, 0.8))
+```
+
+## Distribution of number of reads per animal species
+```{r}
+ggplot(sequence_data, aes(as.numeric(`R1-1`)))+
+  geom_density(aes(fill = species,
+                   y = ..scaled..),
+               alpha = 0.4)+
+  labs(x = "Number of reads",
+       y = "Density",
+       fill = "Animal species")+
+  theme(legend.position = c(0.7, 0.8))
 ```
 
 ```{r ARIBA analysis, include = FALSE}
@@ -156,8 +188,8 @@ pacman::p_load(ggplot2,dplyr,tidyr,gridExtra,grid,
                knitr,IRdisplay,reprex,svglite)
 
 # -------------------------------------- Functions
-# Collapses data frame to unique lines while ignoring NA's
-func_paste <- function(x) paste(unique(x[!is.na(x)]), collapse = ", ")
+
+func_paste2 <- function(x) paste(unique(x[!is.na(x)]), collapse = ",")
 
 # Confidence interval function
 get_binCI <- function(x, n) as.numeric(setNames(binom.test(x,n)$conf.int*100,
@@ -239,10 +271,7 @@ check_flags <- function(df) {
   df <- df %>%
     select(ref, gene_names, flag, ref_ctg_change) %>%
     mutate(flag_result = flag %in% flag_selection,
-           flag_result = as.integer(flag_result),
-           ref = gsub("(.*?)\\_.+", "\\1", ref),
-           ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
-           ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)) %>%
+           flag_result = as.integer(flag_result)) %>%
     rename("gene" = gene_names)
   return(df)
 }
@@ -251,10 +280,16 @@ check_flags <- function(df) {
 # is mutated or not. Includes control for QRDR in gyrA.
 create_mut_table <- function(df) {
   df <- df %>%
-    select(ref, gene_names, flag, ref_ctg_change) %>%
+    mutate(ref_ctg_change = ifelse(ref_ctg_change == ".", "", ref_ctg_change),
+           ref_nt = ifelse(ref_nt == ".", "", ref_nt),
+           ctg_nt = ifelse(ctg_nt == ".", "", ctg_nt),
+           ref_ctg_nt_change = paste(ref_nt, ctg_nt, sep = "-"),
+           mutation = paste(ref_ctg_change, ref_ctg_nt_change, sep = "/"),
+           mutation = ifelse(mutation == "/-", "0", mutation)) %>%
+    select(ref, gene_names, flag, mutation) %>%
     filter(flag %in% flag_selection) %>%
     mutate(id = 1:n()) %>%
-    spread(gene_names, ref_ctg_change) %>%
+    spread(gene_names, mutation) %>%
     group_by(ref) %>%
     summarise_all(funs(func_paste)) %>%
     select(-c(id, flag)) %>%
@@ -262,7 +297,9 @@ create_mut_table <- function(df) {
     mutate(mut = ifelse(mut == "" | mut == "." | is.na(mut) == TRUE, 0, mut),
            result = ifelse(mut != 0, 1, 0),
            result = as.integer(result),
-           type = "mut")
+           type = "mut",
+           nt_change = gsub("[^,]+?/([^,]+?)", "\\1", mut),
+           mut = gsub("([^/]+)/[^,]+", "\\1", mut))
   return(df)
 }                    
 
@@ -420,11 +457,11 @@ calc_no_of_mut <- function(df) {
 create_mut_report <- function(df) {
   df <- df %>%
     select(-mut) %>%
-    group_by(ref) %>%
-    mutate(id = 1:n()) %>%
+    group_by(id) %>%
+    mutate(id2 = 1:n()) %>%
     spread(gene, result_total) %>%
     summarise_all(funs(func_paste)) %>%
-    select(-c(id, type))
+    select(-c(id2, type))
   return(df)
 }
 
@@ -432,53 +469,11 @@ create_mut_report <- function(df) {
 # for acquired genes in columns
 create_acquired_report <- function(df) {
   df <- df %>%
-    group_by(ref) %>%
-    mutate(id = 1:n()) %>%
+    group_by(id) %>%
+    mutate(id2 = 1:n()) %>%
     spread(gene, result_total) %>%
     summarise_all(funs(func_paste)) %>%
-    select(-c(id, type))
-  return(df)
-}
-
-# prepares data frame for number of mutations heatmap
-create_heatmap_df <- function(df) {
-  qnr <- names(df)
-  
-  qnr_cols <- c()
-  
-  for (i in qnr) {
-    if (grepl("qnr", i, ignore.case = TRUE) == TRUE) {
-      qnr_cols <- c(qnr_cols, i)
-    }
-  }
-  
-  qnr_df <- df %>%
-    select_at(vars(ref, qnr_cols)) %>%
-    gather(gene, result, -ref) %>%
-    mutate(type = "Gene")
-  
-  qnr_mut_quant <- mut_quant %>%
-    select(-c("gyrA","gyrB","parC","parE")) %>%
-    mutate(type = "Mut") %>%
-    gather(gene, result, -c(ref, type)) %>%
-    mutate(gene = case_when(gene == "mut_gyrA" ~ "gyrA",
-                            gene == "mut_gyrB" ~ "gyrB",
-                            gene == "mut_parC" ~ "parC",
-                            gene == "mut_parE" ~ "parE",
-                            TRUE ~ gene)) %>%
-    rbind(., qnr_df)
-  return(qnr_mut_quant)
-}
-
-# Introduces unique ID's for each sample
-fix_ref_id <- function(df) {
-  df <- df %>%
-    mutate(ref = gsub("(.*?)\\_.+", "\\1", ref),
-         ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
-         ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)) %>%
-    arrange(desc(ref)) %>%
-    mutate(id = id) %>%
-    select(-ref)
+    select(-c(id2, type))
   return(df)
 }
 
@@ -492,14 +487,25 @@ clean_mut_data <- fix_gene_names(mut_data)
 clean_acquired_data <- fix_gene_names(acquired_data)
 
 # Check flags
-mut_flags <- check_flags(clean_mut_data)
-acquired_flags <- check_flags(clean_acquired_data)
+mut_flags <- check_flags(clean_mut_data) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
+
+acquired_flags <- check_flags(clean_acquired_data) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
 
 # Wrangle
 mut_table <- create_mut_table(clean_mut_data)
-mut_table_fixed <- fix_gyr_par_results(mut_table)
+mut_table_fixed <- fix_gyr_par_results(mut_table) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
+
 mut_filtered <- filter_mut_table(mut_table_fixed)
-acquired_table <- create_acquired_table(clean_acquired_data)
+acquired_table <- create_acquired_table(clean_acquired_data) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
+
 acquired_filtered <- filter_acquired_table(acquired_table)
 
 # Stats
@@ -507,29 +513,25 @@ if (length(mut_genes) == 1) {
   if (mut_genes == "ALL") {
     mut_stats <- calc_stats(mut_table_fixed)
     mut_report <- create_mut_report(mut_table_fixed)
-    mut_report_fixed <- fix_ref_id(mut_report)
     }
 } else {
   mut_stats <- calc_stats(mut_filtered)
   mut_report <- create_mut_report(mut_filtered)
-  mut_report_fixed <- fix_ref_id(mut_report)
 }
 
 if (length(ac_genes) == 1) {
   if (ac_genes == "ALL") {
     acquired_stats <- calc_stats(acquired_table)
     acquired_report <- create_acquired_report(acquired_table)
-    acquired_report_fixed <- fix_ref_id(acquired_report)
   }
 } else {
   acquired_stats <- calc_stats(acquired_filtered)
   acquired_report <- create_acquired_report(acquired_filtered)
-  acquired_report_fixed <- fix_ref_id(acquired_report)
 }
 
-mut_quant <- suppressWarnings(calc_no_of_mut(mut_table))
-mut_quant_fixed <- fix_ref_id(mut_quant)
-heatmap_df <- create_heatmap_df(acquired_report)
+mut_quant <- suppressWarnings(calc_no_of_mut(mut_table)) %>%
+  left_join(id_data, by = "ref") %>%
+  select(id, everything(), -ref)
 
 # ---------------------------------- Tables
 
@@ -552,7 +554,6 @@ isolate_data_complete <- isolate_data %>%
 
 isolate_data_complete
 ```
-
 
 ## List of genes of interest
 ```{r}
@@ -654,7 +655,7 @@ per_species
 
 ## Percent isolates with PMQR
 ```{r}
-acquired_report_fixed %>%
+acquired_report %>%
   select(-id) %>%
   mutate_all(funs(as.numeric(.))) %>%
   mutate(total = rowSums(.),
@@ -674,7 +675,7 @@ acquired_report_fixed %>%
 
 ## Percent isolates with specific qnr genes
 ```{r}
-acquired_report_fixed %>%
+acquired_report %>%
   select(-id) %>%
   t() %>%
   as.data.frame(.) %>%
@@ -690,13 +691,12 @@ acquired_report_fixed %>%
          upr = round(get_binCI(Present, Total)[2], 2),
          "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
   select(-c(lwr, upr, Total))
-
 ```
 
 ## Percent isolates with mutations in QRDR
 ```{r}
-mut_report_fixed %>%
-  select(-c(id, marR)) %>%
+mut_report %>%
+  select(-c(id, marR, nt_change)) %>%
   group_by_all() %>%
   count() %>%
   ungroup() %>%
@@ -718,7 +718,7 @@ mut_report_fixed %>%
 
 ## Percent of isolates with specific mutation combinations in QRDR
 ```{r}
-mut_quant_fixed %>%
+mut_quant %>%
   group_by(gyrA, gyrB, parC, parE) %>%
   count() %>%
   rowwise() %>%
@@ -730,11 +730,54 @@ mut_quant_fixed %>%
   select(-c(lwr, upr, Total))
 ```
 
+## Percent isolates with specific nucleotide changes in QRDR
+```{r}
+suppressWarnings(clean_mut_data %>%
+  mutate(ref_ctg_change = ifelse(ref_ctg_change == ".", "", ref_ctg_change),
+         ref_nt = ifelse(ref_nt == ".", "", ref_nt),
+         ctg_nt = ifelse(ctg_nt == ".", "", ctg_nt),
+         ref_ctg_nt_change = paste(ref_nt, ctg_nt, sep = "-"),
+         mutation = paste(ref_ctg_change, ref_ctg_nt_change, sep = "/"),
+         mutation = ifelse(mutation == "/-", "0", mutation)) %>%
+  select(ref, gene_names, flag, mutation) %>%
+  filter(flag %in% flag_selection,
+         gene_names %in% c("gyrA","gyrB","parC","parE")) %>%
+  mutate(id = 1:n()) %>%
+  spread(gene_names, mutation) %>%
+  group_by(ref) %>%
+  summarise_all(funs(func_paste2)) %>%
+  select(-c(id, flag)) %>%
+  gather(gene, mut, -ref) %>%
+  mutate(mut = ifelse(mut == "" | mut == "." | is.na(mut) == TRUE, 0, mut),
+         result = ifelse(mut != 0, 1, 0),
+         result = as.integer(result),
+         type = "mut") %>%
+  separate(mut, into = paste("v", 1:12, sep = "_"), sep = ",") %>%
+  gather(mut, value, paste("v", 1:12, sep = "_")) %>%
+  separate(value, into = c("aa_change","nt_change"), sep = "/") %>%
+  select(-mut) %>%
+  rename("mut" = aa_change) %>%
+  filter(is.na(nt_change) == FALSE) %>%
+  fix_gyr_par_results(.) %>%
+  filter(result_total == 1) %>%
+  group_by(gene, mut, nt_change) %>%
+  count() %>%
+  separate(nt_change, into = c("Reference nt", "Contig nt"), sep = "-") %>%
+  rowwise() %>%
+  mutate(Total = 285,
+         Percent = round(n/Total * 100,1),
+         lwr = round(get_binCI(n, Total)[1],1),
+         upr = round(get_binCI(n, Total)[2],1),
+         "95 % CI" = paste("[", lwr, "-", upr, "]")) %>%
+  select(-c(lwr, upr, Total)) %>%
+  rename("Mutation" = mut))
+```
+
 ## Total combinations
 ```{r}
-acquired_report_fixed %>%
-  left_join(mut_quant_fixed[c("gyrA","gyrB","parC","parE","id")], by = "id") %>%
-  left_join(mut_report_fixed[c("marR","id")], by = "id") %>%
+test <- acquired_report %>%
+  left_join(mut_quant[c("gyrA","gyrB","parC","parE","id")], by = "id") %>%
+  left_join(mut_report[c("marR","id")], by = "id") %>%
   left_join(mic_data[c("id","CIP","NAL")], by = "id") %>%
   select(-id) %>%
   group_by_at(vars(-c(CIP, NAL))) %>%
@@ -757,8 +800,8 @@ acquired_report_fixed %>%
 # Figures
 ## Percent isolates with PMQR and/or QRDR mutations in gyrA, gyrB, parC or parE
 ```{r}
-total_report <- mut_report_fixed %>%
-  left_join(acquired_report_fixed, by = "id") %>%
+total_report <- mut_report %>%
+  left_join(acquired_report, by = "id") %>%
   gather(gene, value, -id) %>%
   mutate(present = ifelse(value == 1, gene, NA),
          ref = 1:n()) %>%
@@ -777,7 +820,7 @@ total_report <- mut_report_fixed %>%
          lwr = round(get_binCI(n, total)[1], 1),
          upr = round(get_binCI(n, total)[2], 1))
 
-genes <- c(names(mut_report_fixed), names(acquired_report_fixed))
+genes <- c(names(mut_report), names(acquired_report))
 genes <- genes[!genes == "id"]
 
 p1 <- ggplot(total_report, aes(reorder(present, as.numeric(-CIP)), percent, fill = factor(CIP)))+
@@ -795,8 +838,8 @@ p1 <- ggplot(total_report, aes(reorder(present, as.numeric(-CIP)), percent, fill
         legend.position = "top",
         legend.spacing.x = unit(0.27, "cm"))
 
-dot_report <- mut_report_fixed %>%
-  left_join(acquired_report_fixed, by = "id") %>%
+dot_report <- mut_report %>%
+  left_join(acquired_report, by = "id") %>%
   gather(gene, value, -id) %>%
   mutate(present = ifelse(value == 1, gene, NA),
          ref = 1:n()) %>%
@@ -833,16 +876,9 @@ plot_grid(p1, p2, nrow = 2, align = "v", rel_heights = c(3.5/5, 1.5/5))
 ```{r}
 gene_names <- names(mut_report)
 
-gene_names <- gene_names[-1]
+gene_names <- gene_names[-c(1,2)]
 
 mut_report %>%
-    mutate(
-      ref = gsub("(.*?)\\_.+", "\\1", ref),
-      ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
-      ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)
-    ) %>%
-    arrange(desc(ref)) %>%
-    mutate(id = id) %>%
     left_join(isolate_data, by = "id") %>%
     gather(key, value, gene_names) %>%
     group_by(key, value, species) %>%
@@ -889,13 +925,6 @@ mut_report %>%
 qnr_genes <- c("qnrA1","qnrB19","qnrB6","qnrB60","qnrS1","qnrS2","qnrS4")
 
 acquired_report %>%
-    mutate(
-      ref = gsub("(.*?)\\_.+", "\\1", ref),
-      ref = sub("^\\d*-?(\\d{4}-.*)", "\\1", ref),
-      ref = sub("^(\\d{4}-\\d{2}-\\d*)-1", "\\1", ref)
-    ) %>%
-    arrange(desc(ref)) %>%
-    mutate(id = id) %>%
     left_join(isolate_data, by = "id") %>%
     gather(key, value, qnr_genes) %>%
     group_by(key, value, species) %>%
